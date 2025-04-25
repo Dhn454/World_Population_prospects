@@ -1,0 +1,6 @@
+Flask==3.0.2
+requests
+redis 
+hotqueue 
+matplotlib 
+pytest==8.3.4 
