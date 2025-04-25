@@ -19,4 +19,7 @@ spec:
         - name: test-app-container
           imagePullPolicy: Always
           image: ubuntu:22.04
-          command: ['sh', '-c', /app.py]
+          command: ["python3", "/app/app.py"]
+          volumeMounts:
+            - name: app-code
+              mountPath: /app

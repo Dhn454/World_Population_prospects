@@ -1,0 +1,25 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deployment-worker
+  labels:
+    app: test-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-worker
+  template:
+    metadata:
+      labels:
+        app: test-worker
+    spec:
+      containers:
+        - name: test-worker-container
+          imagePullPolicy: Always
+          image: python:3.10-slim
+          command: ["python3", "/app/worker.py"]
+          volumeMounts:
+            - name: worker-code
+              mountPath: /app
