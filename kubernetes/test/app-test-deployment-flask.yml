@@ -1,0 +1,22 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: test-deployment-flask
+  labels:
+    app: test-flask-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-flask-app
+  template:
+    metadata:
+      labels:
+        app: test-flask-app
+    spec:
+      containers:
+        - name: test-app-container
+          imagePullPolicy: Always
+          image: ubuntu:22.04
+          command: ['sh', '-c', /app.py]
