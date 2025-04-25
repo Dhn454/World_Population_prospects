@@ -16,7 +16,7 @@ services:
             dockerfile: ./Dockerfile
         depends_on:
             - redis-db
-        image: rguarneros065/flask-redis-gene_api:1.0 
+        image: rguarneros065/flask-worldpop_api:1.0 
         ports:
             - 5000:5000
         command: [api.py] # AI used to run the api 
@@ -29,7 +29,7 @@ services:
             dockerfile: ./Dockerfile
         depends_on: 
             - redis-db
-        image: rguarneros065/flask-redis-gene_api:1.0   
+        image: rguarneros065/flask-worldpop_api:1.0 
         command: [worker.py] 
         environment: 
         - REDIS_HOST=redis-db
