@@ -11,14 +11,14 @@ import redis
 import json 
 import re 
 import os
-import urllib.parse
 import pandas as pd 
 from collections import defaultdict 
 from jobs import add_job, get_job_by_id, get_all_jobs, get_results 
 
 _redis_host = os.environ.get("REDIS_HOST") # AI used to understand environment function 
 _redis_port = 6379
-data_link = "https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz"
+# data_link = "https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz" 
+local_data="cache/WPP2024_Demographic_Indicators_Medium.csv.gz" 
 
 # Redis Database 
 rd=redis.Redis(host=_redis_host, port=_redis_port, db=0) 
@@ -33,28 +33,40 @@ logging.basicConfig(level=numeric_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logging.info("Logging level set to %s", log_level) 
 
-def download_and_extract_gz(url): # AI helped extract gz file 
-    response = requests.get(url, verify=False)
+def download_and_extract_gz(): # AI helped extract gz file     
     gz_path = "data.csv.gz" 
     csv_path = "data.csv" 
 
-    # Save .gz file
-    with open(gz_path, "wb") as f:
-        f.write(response.content)
+    logging.debug(f"gathering data saved locally")
+    if os.path.exists(local_data):
+        logging.info(f"Using cached .gz file from: {local_data}")
+        shutil.copyfile(local_data, gz_path)
+    else:
+        logging.error(f"No local cache available at {local_data}")
+        raise RuntimeError("No remote or local data available.")
 
-    # Decompress to CSV
-    with gzip.open(gz_path, 'rb') as f_in:
-        with open(csv_path, 'wb') as f_out:
-            shutil.copyfileobj(f_in, f_out)
+    # Decompress .gz to .csv
+    try:
+        with gzip.open(gz_path, 'rb') as f_in:
+            with open(csv_path, 'wb') as f_out:
+                shutil.copyfileobj(f_in, f_out)
+        logging.info(f"Decompressed .gz to .csv at: {csv_path}") 
+    finally:
+        if os.path.exists(gz_path):
+            os.remove(gz_path)
+            logging.info(f"Removed .gz file: {gz_path}")
 
-    os.remove(gz_path)  # Clean up .gz file
-    return csv_path
+    return csv_path 
 
 def decode_data(): # AI helped read csv file 
-    path = download_and_extract_gz(data_link)
-    df = pd.read_csv(path, low_memory=False)
-
-    os.remove(path) # Clean up csv file 
+    path = download_and_extract_gz()
+    try:
+        df = pd.read_csv(path, low_memory=False)
+        logging.info(f"Loaded CSV with {len(df)} rows")
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
+            logging.info(f"Removed temporary CSV: {path}") 
     
     # Replace all NaNs with empty strings
     df.fillna("", inplace=True)
@@ -79,31 +91,6 @@ def decode_data(): # AI helped read csv file
 
     return dict(grouped_by_year)  # convert defaultdict to normal dict if 
 
-
-def get_data() -> tuple: 
-    """
-    This function gets the UN world population data using the requests library. 
-
-    Args: 
-        NONE 
-
-    Returns: 
-        return (tuple): Returns a tuple with the first entry being the last
-                        modified date as a string and the second entry being 
-                        a list of dictionaries of the HGNC dictionaries. 
-    """ 
-    try: 
-        response_head = requests.head(url=data_link) 
-        if response_head.status_code!=200: # return status code --> 200 is success 
-            logging.error(f'Status Error: {response_head.status_code}') 
-            raise Exception(f'Status Error: {response_head.status_code}') 
-        data = decode_data() # list of list of dictionaries, each list is a year and all data from that year
-        logging.debug(f'Data has been successfully written to data as a {type(data)}\n') 
-        return response_head.headers['Last-Modified'], data # --> returns as tuple 
-    except FileNotFoundError: 
-        logging.error(f'The specified key does not exist\n') 
-        raise Exception(f'The specified key does not exist\n') 
-
 def fetch_latest_data(): 
     """
     This function fetches the latest HGNC data and updates 
@@ -116,17 +103,15 @@ def fetch_latest_data():
     Returns: 
         NONE 
     """ 
-    response_head = requests.head(url=data_link) 
-    header_time = response_head.headers['Last-Modified'] 
-    # if header time is not the same or if number of keys 
-    # is 0 (empty database) then request new data 
-    if len(rd.keys())==0 or rd.get('Last-Modified').decode('utf-8') != header_time: # order matters since an empty list cannot have a Last-modified time 
-        logging.debug('Data was not the same, initializing update.') 
-        data = get_data() 
+
+    current_year = datetime.now().year 
+    year_keys = [int(k.decode()) for k in rd.keys() if k.decode().isdigit()]
+    if not year_keys or max(year_keys) < current_year-2: # most up to date was 2023 and we were in 2025 when writing program 
+        logging.debug('Data was outdated, initializing update.') 
+        data = decode_data() 
         # write data to database inside if statement
-        rd.set('Last-Modified',data[0]) # sets the last-modified value for reference
+        rd.set('Last-Modified',current_year) # sets the last-modified value for reference 
         # for loop to write each dictionary to database for easier lookup 
-        data = data[1] # rewrite data to not include last modified date 
         for year, entries in data.items(): # AI helped to correctly set data into redis 
             rd.set(year, json.dumps(entries))
         logging.info('Data has been updated.') 
@@ -222,23 +207,46 @@ def get_year(years:str) -> dict:
     if int(start_year) > int(end_year): 
         start_year, end_year = end_year, start_year
 
-    data = []   
+    data = []
+    missing_years = []
 
     try: 
         if not regions: 
             for i in range(int(start_year),int(end_year)+1):
-                data.append(json.loads(rd.get(str(i))))
-            return data 
+                # data.append(json.loads(rd.get(str(i))))
+                raw = rd.get(str(i))
+                if raw is None:
+                    missing_years.append(str(i)) 
+                    logging.warning(f"No data found for year: {i}") 
+                    continue 
+                year_data = json.loads(raw)
+            if missing_years: 
+                return {"data": year_data, "missing_years": missing_years} 
+            return year_data 
         if regions:
+            found_regions = set()
             for i in range(int(start_year),int(end_year)+1):
-                year_data = (json.loads(rd.get(str(i))))
+                raw = rd.get(str(i))
+                if raw is None:
+                    missing_years.append(str(i))
+                    logging.warning(f"No data found for year: {i}")
+                    continue 
+                year_data = json.loads(raw)
                 logging.info(f'gathered year data')
                 logging.info(f'data is of type {type(year_data)}') 
                 matches = [d for d in year_data if d.get("Location") in regions]
+                found_regions.update(d.get("Location") for d in matches)
                 data.extend(matches)
-
+            missing_regions = set(regions) - found_regions
+            if missing_regions and missing_years:
+                logging.warning(f"Missing regions in data: {', '.join(missing_regions)}")
+                return {"data": data, "missing_regions": list(missing_regions), "missing_years": missing_years} 
+            if missing_regions: 
+                return {"data": data, "missing_regions": list(missing_regions)} 
+            if missing_years: 
+                return {"data": data, "missing_years": missing_years} 
             return data 
-        
+
     except TypeError: 
         logging.error(f"years '{years}' not found") 
         return {"error": f"years '{years}' not found"}, 404 
@@ -318,35 +326,68 @@ def get_region_eras(eras:str, region:str) -> List[dict]:
     Returns: 
         response (dict): Returns a dictionary with all of the key:value
                          pairs of the specified hgnc_id field. 
-    """
+    """    
     try:
-        start_year, end_year = eras.split("-")
+        if '-' in eras:
+            start_year, end_year = eras.split("-")
+        else:
+            start_year = end_year = eras
     except ValueError:
         return {"error": "Invalid era format. Use YYYY-YYYY."}, 404
-    
-    temp = start_year 
-    if int(start_year) > int(end_year): 
-        start_year = end_year
-        end_year = temp 
-    
-    try: 
-        keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # AI used to check for last modified entry 
-        if not keys: 
-            logging.warning("GET /years returned an empty key list")
-            return {"error": f"No data found for '{region}' region. Database was empty! "}, 404
-        keys = [key for key in keys if key<=end_year and key>=start_year]
-        region_data = [] # list of dictionaries 
-        for year in keys: # iterating through all years, each year has a list of dictionaries with different regions 
-            item = json.loads(rd.get(year).decode('utf-8')) # get list of dictionaries
-            region_data.extend([data_dict for data_dict in item if data_dict["Location"] == region]) # extend used to avoid TypeError 
+
+    if int(start_year) > int(end_year):
+        start_year, end_year = end_year, start_year
+
+    try:
+        keys = [key.decode('utf-8') for key in rd.keys()
+                if key.decode('utf-8') != "Last-Modified"]
+
+        if not keys:
+            logging.warning("GET /region_eras returned an empty key list.")
+            return {
+                "error": f"No data found for '{region}' region. Database was empty!"
+            }, 404
+
+        region_data = []
+        missing_years = []
+
+        for year in range(int(start_year), int(end_year) + 1):
+            str_year = str(year)
+            if str_year not in keys:
+                missing_years.append(str_year)
+                logging.warning(f"No data found for year: {str_year}")
+                continue
+
+            raw = rd.get(str_year)
+            if raw is None:
+                missing_years.append(str_year)
+                logging.warning(f"No data found for year: {str_year}")
+                continue
+
+            year_data = json.loads(raw)
+            matches = [d for d in year_data if d.get("Location") == region]
+            region_data.extend(matches)
+
+        if not region_data and missing_years:
+            return {
+                "error": f"No data entries found for region '{region}'.",
+                "missing_years": missing_years
+            }, 404
 
         if not region_data:
-            return {"error": f"No entries found for region '{region}'."}, 404
-        
-        return region_data 
-    except Exception as e: 
-        logging.error(f"Raised exception '{e}'") 
-        return {"error": f"Raised exception '{e}'"}, 404 
+            return {
+                "error": f"No entries found for region '{region}' in any year from {start_year} to {end_year}."
+            }, 404
+
+        response = {"data": region_data}
+        if missing_years:
+            response["missing_years"] = missing_years
+
+        return response, 206 if missing_years else 200
+
+    except Exception as e:
+        logging.error(f"Raised exception '{e}'")
+        return {"error": f"Raised exception '{e}'"}, 500
 
 
 def is_valid_date(date_str:str) -> bool: # boolean function
