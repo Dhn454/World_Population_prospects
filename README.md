@@ -575,6 +575,8 @@ WARN[0000] /home/ubuntu/coe332-hw-guarneros/homework08/docker-compose.yml: `vers
 You can double check that you successfully exited and removed the running container by running ```docker ps -a```. You should see that all the containers for this project are gone. 
 
 ## Resources 
+* Converting XLSX to JSON: https://www.geeksforgeeks.org/convert-excel-to-json-with-python/
+* Matrix Conversion: https://www.geeksforgeeks.org/how-to-convert-pandas-dataframe-into-a-list/
 
 * Logging Documentation: https://docs.python.org/3/howto/logging.html 
 * Requests Library: https://pypi.org/project/requests/ 

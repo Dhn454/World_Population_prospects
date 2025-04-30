@@ -8,6 +8,7 @@ import logging
 from hotqueue import HotQueue 
 from jobs import update_job_status, get_job_by_id
 from datetime import datetime
+import time
 
 _redis_port=6379 
 _redis_host = os.environ.get("REDIS_HOST") # AI used to understand environment function 
@@ -40,112 +41,52 @@ def update(jobid: str):
     Returns:
         NONE
     """
-    logging.info(f"Started processing job: {jobid}")
-    try:
-        update_job_status(jobid, 'in progress')
+    # logging.info(f"Started processing job: {jobid}")
+    # try:
+    #     update_job_status(jobid, 'in progress')
 
-        # WORK STARTING  
-        job_dict = get_job_by_id(jobid)
-        if "error" in job_dict:
-            raise Exception(f"Error retrieving job {jobid}: {job_dict['error']}")
+    #     # WORK STARTING  
+    #     job_dict = get_job_by_id(jobid)
+    #     if "error" in job_dict:
+    #         raise Exception(f"Error retrieving job {jobid}: {job_dict['error']}")
 
-        start = datetime.strptime(job_dict["start"], "%Y-%m-%d")
-        end = datetime.strptime(job_dict["end"], "%Y-%m-%d") 
-        keys = rd.keys()
-        locus_types = []
+    #     start = datetime.strptime(job_dict["start"], "%Y-%m-%d")
+    #     end = datetime.strptime(job_dict["end"], "%Y-%m-%d") 
+    #     keys = rd.keys()
+    #     locus_types = []
 
-        for item in keys:
-            try:
-                data = rd.get(item)
-                if not data:
-                    continue
-                data_dict = json.loads(data.decode("utf-8"))
+    #     for item in keys:
+    #         try:
+    #             data = rd.get(item)
+    #             if not data:
+    #                 continue
+    #             data_dict = json.loads(data.decode("utf-8"))
                 
-                date_str = data_dict.get("date_approved_reserved")
-                if not date_str:
-                    continue
+    #             date_str = data_dict.get("date_approved_reserved")
+    #             if not date_str:
+    #                 continue
 
-                date = datetime.strptime(date_str, "%Y-%m-%d")
-                if start <= date <= end:
-                    locus_type = data_dict.get("locus_type")
-                    if locus_type:
-                        locus_types.append(locus_type)
-            except Exception as e:
-                logging.error(f"Error processing key {item}: {e}")
+    #             date = datetime.strptime(date_str, "%Y-%m-%d")
+    #             if start <= date <= end:
+    #                 locus_type = data_dict.get("locus_type")
+    #                 if locus_type:
+    #                     locus_types.append(locus_type)
+    #         except Exception as e:
+    #             logging.error(f"Error processing key {item}: {e}")
 
-        if not locus_types:
-            results = {"message": "No genes found in the specified date range."}
-        else:
-            results = Counter(locus_types)
+    #     if not locus_types:
+    #         results = {"message": "No genes found in the specified date range."}
+    #     else:
+    #         results = Counter(locus_types)
 
-        resdb.set(jobid, json.dumps(results))
-        update_job_status(jobid, 'complete')
+    #     resdb.set(jobid, json.dumps(results))
+    #     update_job_status(jobid, 'complete')
 
-    except Exception as e:
-        update_job_status(jobid, 'error')  # If something goes wrong, mark job as error.
-        logging.error(f"Error processing job {jobid}: {e}") 
+    # except Exception as e:
+    #     update_job_status(jobid, 'error')  # If something goes wrong, mark job as error.
+    #     logging.error(f"Error processing job {jobid}: {e}") 
+    update_job_status(jobid, 'in progress') 
+    time.sleep(15) # sleeps for 15 seconds to mock work being done 
+    update_job_status(jobid, 'complete') 
 
 update() 
-
-# USED FOR TESTING, DID NOT KNOW HOW ELSE TO DO IT 
-def process_job(jobid: str):
-    logging.info(f"Started processing job: {jobid}")
-    try:
-        # Mark the job as in progress
-        update_job_status(jobid, 'in progress')
-        
-        # Retrieve the job data from Redis
-        job_dict = get_job_by_id(jobid)
-        if "error" in job_dict:
-            raise Exception(f"Error retrieving job {jobid}: {job_dict['error']}")
-        
-        # Parse the start and end date from the job data
-        start = datetime.strptime(job_dict["start"], "%Y-%m-%d")
-        end = datetime.strptime(job_dict["end"], "%Y-%m-%d")
-        
-        # Initialize a list to hold all the locus_type values
-        locus_types = []
-        
-        # Get all keys from the gene data store
-        keys = rd.keys()
-        
-        # Loop through each gene and process it
-        for item in keys:
-            try:
-                data = rd.get(item)
-                if not data:
-                    continue
-                
-                data_dict = json.loads(data.decode("utf-8"))
-                date_str = data_dict.get("date_approved_reserved")
-                
-                if not date_str:
-                    continue
-
-                date = datetime.strptime(date_str, "%Y-%m-%d")
-                
-                # Check if the gene's date is within the specified range
-                if start <= date <= end:
-                    locus_type = data_dict.get("locus_type")
-                    if locus_type:
-                        locus_types.append(locus_type)
-            except Exception as e:
-                logging.error(f"Error processing key {item}: {e}")
-        
-        # If no genes match the date range, prepare an appropriate message
-        if not locus_types:
-            results = {"message": "No genes found in the specified date range."}
-        else:
-            # Count the occurrences of each locus_type
-            results = Counter(locus_types)
-
-        # Store the result in the Redis results database
-        resdb.set(jobid, json.dumps(results))
-        
-        # Mark the job as complete
-        update_job_status(jobid, 'complete')
-
-    except Exception as e:
-        # If something goes wrong, mark the job as failed
-        update_job_status(jobid, 'error')
-        logging.error(f"Error processing job {jobid}: {e}")

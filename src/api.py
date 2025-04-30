@@ -1,38 +1,88 @@
-#!/usr/bin/env python3
 import requests
 import matplotlib.pyplot as plt 
 import argparse
+import gzip
+import shutil 
 import logging
-import socket
 from typing import List, Union 
 from flask import Flask, request 
 from datetime import datetime
 import redis 
 import json 
+import re 
 import os
-from jobs import add_job, get_job_by_id, get_all_jobs, get_results
+import urllib.parse
+import pandas as pd 
+from collections import defaultdict 
+from jobs import add_job, get_job_by_id, get_all_jobs, get_results 
 
 _redis_host = os.environ.get("REDIS_HOST") # AI used to understand environment function 
-data_link = "https://storage.googleapis.com/public-download-files/hgnc/json/json/hgnc_complete_set.json" 
+_redis_port = 6379
+data_link = "https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz"
 
-# Starting database 
-rd=redis.Redis(host=_redis_host, port=6379, db=0) 
+# Redis Database 
+rd=redis.Redis(host=_redis_host, port=_redis_port, db=0) 
 
+# Starting Flask App 
 app = Flask(__name__) 
 
+# Setting Log Level 
 log_level = os.getenv("LOG_LEVEL", "INFO").upper()
 numeric_level = getattr(logging, log_level, logging.INFO)
-
-logging.basicConfig(
-    level=numeric_level,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-
+logging.basicConfig(level=numeric_level,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logging.info("Logging level set to %s", log_level) 
+
+def download_and_extract_gz(url): # AI helped extract gz file 
+    response = requests.get(url, verify=False)
+    gz_path = "data.csv.gz" 
+    csv_path = "data.csv" 
+
+    # Save .gz file
+    with open(gz_path, "wb") as f:
+        f.write(response.content)
+
+    # Decompress to CSV
+    with gzip.open(gz_path, 'rb') as f_in:
+        with open(csv_path, 'wb') as f_out:
+            shutil.copyfileobj(f_in, f_out)
+
+    os.remove(gz_path)  # Clean up .gz file
+    return csv_path
+
+def decode_data(): # AI helped read csv file 
+    path = download_and_extract_gz(data_link)
+    df = pd.read_csv(path, low_memory=False)
+
+    os.remove(path) # Clean up csv file 
+    
+    # Replace all NaNs with empty strings
+    df.fillna("", inplace=True)
+    df = df.astype(str) # Panda DataFrame structure 
+
+    # Convert to list of dictionaries
+    data = df.to_dict(orient='records') 
+    
+    # Replace spaces with underscores in all string values - AI used 
+    for row in data:
+        for key in row:
+            if isinstance(row[key], str):
+                # row[key] = row[key].replace(" ", "_") 
+                row[key] = re.sub(r"[,\s]+", "_", row[key])
+
+    grouped_by_year = defaultdict(list)
+
+    for row in data:
+        year = row.get("Time")  # assumes 'Time' is the column name for year
+        if year:
+            grouped_by_year[year].append(row) 
+
+    return dict(grouped_by_year)  # convert defaultdict to normal dict if 
+
 
 def get_data() -> tuple: 
     """
-    This function gets the HGNC data using the requests library. 
+    This function gets the UN world population data using the requests library. 
 
     Args: 
         NONE 
@@ -43,14 +93,13 @@ def get_data() -> tuple:
                         a list of dictionaries of the HGNC dictionaries. 
     """ 
     try: 
-        response = requests.get(url=data_link) 
         response_head = requests.head(url=data_link) 
-        if response.status_code!=200: # return status code --> 200 is success 
-            logging.error(f'Status Error: {response.status_code}') 
-            raise Exception(f'Status Error: {response.status_code}') 
-        data = json.loads(response.content) 
+        if response_head.status_code!=200: # return status code --> 200 is success 
+            logging.error(f'Status Error: {response_head.status_code}') 
+            raise Exception(f'Status Error: {response_head.status_code}') 
+        data = decode_data() # list of list of dictionaries, each list is a year and all data from that year
         logging.debug(f'Data has been successfully written to data as a {type(data)}\n') 
-        return response_head.headers['Last-Modified'], data['response']['docs'] # --> returns as tuple 
+        return response_head.headers['Last-Modified'], data # --> returns as tuple 
     except FileNotFoundError: 
         logging.error(f'The specified key does not exist\n') 
         raise Exception(f'The specified key does not exist\n') 
@@ -70,15 +119,16 @@ def fetch_latest_data():
     response_head = requests.head(url=data_link) 
     header_time = response_head.headers['Last-Modified'] 
     # if header time is not the same or if number of keys 
-    # is 0 (empty database) then request new data
-    if len(rd.keys())==0 or rd.get('Last-Modified').decode('utf-8') != header_time: # order matters since an empty list cannot have a Last-modified time
+    # is 0 (empty database) then request new data 
+    if len(rd.keys())==0 or rd.get('Last-Modified').decode('utf-8') != header_time: # order matters since an empty list cannot have a Last-modified time 
         logging.debug('Data was not the same, initializing update.') 
         data = get_data() 
         # write data to database inside if statement
         rd.set('Last-Modified',data[0]) # sets the last-modified value for reference
-        # for loop to write each EPOCH to database for easier lookup 
-        for item in data[1]: 
-            rd.set(item['hgnc_id'],json.dumps(item)) # redis saves it in random order 
+        # for loop to write each dictionary to database for easier lookup 
+        data = data[1] # rewrite data to not include last modified date 
+        for year, entries in data.items(): # AI helped to correctly set data into redis 
+            rd.set(year, json.dumps(entries))
         logging.info('Data has been updated.') 
     else: 
         logging.debug('Data was the same.') 
@@ -103,15 +153,16 @@ def process_data() -> Union[list, str]: # used AI for Union type annotation opti
                          DELETE method. 
     """ 
     if request.method == 'GET':
-        keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # AI used to check for last modified entry 
+        keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # check for last modified entry and dont include 
         data = [] 
         for item in keys:
             data.append(json.loads(rd.get(item).decode('utf-8'))) 
-        return data
+        return data 
     elif request.method == 'POST':
+        logging.info("POST /data route hit — starting fetch")
         fetch_latest_data() 
-        logging.debug('Loaded the HGNC data to a Redis database') 
-        return 'Loaded the HGNC data to a Redis database\n' 
+        logging.debug('Loaded the world population data to a Redis database') 
+        return 'Loaded the world population data to a Redis database\n' 
     elif request.method == 'DELETE':
         for item in rd.keys(): 
             rd.delete(item) 
@@ -119,8 +170,8 @@ def process_data() -> Union[list, str]: # used AI for Union type annotation opti
         return 'Deleted all data from Redis database\n' 
     return {"error": f"Method Not Allowed."}, 405 
 
-@app.route('/genes', methods=['GET']) # make a case where epoch is nonexistent
-def get_all_genes() -> List[str]: 
+@app.route('/years', methods=['GET']) # make a case where epoch is nonexistent
+def get_all_years() -> List[str]: 
     """
     This route uses the GET method to retrieve all of the hgnc_id fields 
     from the Redis database. 
@@ -135,14 +186,65 @@ def get_all_genes() -> List[str]:
     try: 
         keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # AI used to check for last modified entry 
         if not keys: 
-            logging.warning("GET /genes returned an empty key list")
+            logging.warning("GET /years returned an empty key list")
+        keys.sort()
         return keys 
     except Exception as e:
         logging.error(f"Error fetching genes: {e}")
         return {"error": "Internal Server Error"}, 500
 
-@app.route('/genes/<hgnc_id>', methods=['GET']) 
-def get_gene(hgnc_id:str) -> dict: 
+@app.route('/years/<years>/regions', methods=['GET']) 
+def get_year(years:str) -> dict: 
+    """
+    This route uses the GET method to retrieve a certain hgnc_id field 
+    and the dictionary with all of its key:value pairs. 
+
+    Args: 
+        hgnc_id (string): A string specifying the key of the certain 
+                          hgnc_id you want to extract from the Redis
+                          database. 
+
+    Returns: 
+        response (dict): Returns a dictionary with all of the key:value
+                         pairs of the specified hgnc_id field. 
+    """
+    region_names = request.args.get("names", "")
+    regions = region_names.split(",") if region_names else []
+
+    try:
+        if '-' in years:
+            start_year, end_year = years.split('-')
+        else:
+            start_year = end_year = years  # Treat single year as both start and end
+    except ValueError: 
+        return {"error": "Invalid era format. Use YYYY-YYYY."}, 404
+    
+    if int(start_year) > int(end_year): 
+        start_year, end_year = end_year, start_year
+
+    data = []   
+
+    try: 
+        if not regions: 
+            for i in range(int(start_year),int(end_year)+1):
+                data.append(json.loads(rd.get(str(i))))
+            return data 
+        if regions:
+            for i in range(int(start_year),int(end_year)+1):
+                year_data = (json.loads(rd.get(str(i))))
+                logging.info(f'gathered year data')
+                logging.info(f'data is of type {type(year_data)}') 
+                matches = [d for d in year_data if d.get("Location") in regions]
+                data.extend(matches)
+
+            return data 
+        
+    except TypeError: 
+        logging.error(f"years '{years}' not found") 
+        return {"error": f"years '{years}' not found"}, 404 
+
+@app.route('/regions', methods=['GET']) 
+def get_regions() -> dict: 
     """
     This route uses the GET method to retrieve a certain hgnc_id field 
     and the dictionary with all of its key:value pairs. 
@@ -157,44 +259,95 @@ def get_gene(hgnc_id:str) -> dict:
                          pairs of the specified hgnc_id field. 
     """
     try: 
-        response = json.loads(rd.get(hgnc_id)) 
-        for key, value in response.items(): # https://www.w3schools.com/python/ref_dictionary_items.asp 
-            if isinstance(value, list): # AI used to convert list to strings (aesthetic preference)
-                response[key] = ", ".join(map(str, value))  # Join the elements into a single string 
-        all_keys = count_keys() 
-        missing_keys = all_keys - set(response.keys())
-        for key in missing_keys: 
-            response[key] = ""
-        return response 
-    except TypeError: 
-        logging.error(f"hgnc_id '{hgnc_id}' not found")
-        return {"error": f"hgnc_id '{hgnc_id}' not found"}, 404 
-
-def count_keys() -> set: 
+        keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # AI used to check for last modified entry 
+        if not keys: 
+            logging.warning("GET /years returned an empty key list")
+        locations_set = set() # sets update method avoids duplicates 
+        for item in keys:
+            locations_set.update(loc["Location"] for loc in json.loads(rd.get(item).decode('utf-8')))
+        locations = list(locations_set)
+        return locations 
+    except TypeError as e: 
+        logging.error(f"Raised exception '{e}'") 
+        return {"error": f"Raised exception '{e}'"}, 404 
+    
+@app.route('/regions/<region>', methods=['GET']) 
+def get_region(region:str) -> List[dict]: 
     """
-    This function iterates through all the items in a Redis 
-    database to get all the keys in a sparsely populated 
-    list of dictionaries. 
+    This route uses the GET method to retrieve a certain hgnc_id field 
+    and the dictionary with all of its key:value pairs. 
 
     Args: 
-        NONE
+        hgnc_id (string): A string specifying the key of the certain 
+                          hgnc_id you want to extract from the Redis
+                          database. 
 
     Returns: 
-        return (set): Returns a set of all the distinct keys 
-                      in a sparsely populated list of dictionaries. 
+        response (dict): Returns a dictionary with all of the key:value
+                         pairs of the specified hgnc_id field. 
     """
-    logging.info("Counting distinct keys in Redis dataset")
     try: 
         keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # AI used to check for last modified entry 
-        distinct_keys = set()
-        for id in keys: 
-            item = (json.loads(rd.get(id).decode('utf-8'))) 
-            distinct_keys.update(set(item.keys())) 
-        logging.debug(f"Found distinct keys: {distinct_keys}")
-        return distinct_keys 
-    except Exception as e:
-        logging.error(f"Error counting keys: {e}")
-        return set()
+        if not keys: 
+            logging.warning("GET /years returned an empty key list")
+            return {"error": f"No data found for '{region}' region. Database was empty! "}, 404
+        region_data = [] # list of dictionaries 
+        for year in keys: # iterating through all years, each year has a list of dictionaries with different regions 
+            item = json.loads(rd.get(year).decode('utf-8')) # get list of dictionaries
+            region_data.extend([data_dict for data_dict in item if data_dict["Location"] == region]) # extend used to avoid TypeError 
+
+        if not region_data:
+            return {"error": f"No entries found for region '{region}'."}, 404
+        
+        return region_data 
+    except Exception as e: 
+        logging.error(f"Raised exception '{e}'") 
+        return {"error": f"Raised exception '{e}'"}, 404 
+
+@app.route('/regions/<region>/<eras>', methods=['GET']) 
+def get_region_eras(eras:str, region:str) -> List[dict]: 
+    """
+    This route uses the GET method to retrieve a certain hgnc_id field 
+    and the dictionary with all of its key:value pairs. 
+
+    Args: 
+        hgnc_id (string): A string specifying the key of the certain 
+                          hgnc_id you want to extract from the Redis
+                          database. 
+
+    Returns: 
+        response (dict): Returns a dictionary with all of the key:value
+                         pairs of the specified hgnc_id field. 
+    """
+    try:
+        start_year, end_year = eras.split("-")
+    except ValueError:
+        return {"error": "Invalid era format. Use YYYY-YYYY."}, 404
+    
+    temp = start_year 
+    if int(start_year) > int(end_year): 
+        start_year = end_year
+        end_year = temp 
+    
+    try: 
+        keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # AI used to check for last modified entry 
+        if not keys: 
+            logging.warning("GET /years returned an empty key list")
+            return {"error": f"No data found for '{region}' region. Database was empty! "}, 404
+        keys = [key for key in keys if key<=end_year and key>=start_year]
+        region_data = [] # list of dictionaries 
+        for year in keys: # iterating through all years, each year has a list of dictionaries with different regions 
+            item = json.loads(rd.get(year).decode('utf-8')) # get list of dictionaries
+            region_data.extend([data_dict for data_dict in item if data_dict["Location"] == region]) # extend used to avoid TypeError 
+
+        if not region_data:
+            return {"error": f"No entries found for region '{region}'."}, 404
+        
+        return region_data 
+    except Exception as e: 
+        logging.error(f"Raised exception '{e}'") 
+        return {"error": f"Raised exception '{e}'"}, 404 
+
 
 def is_valid_date(date_str:str) -> bool: # boolean function
     """
@@ -317,4 +470,4 @@ def results(jobid: str) -> Union[dict,tuple]:
         return {"error": "Internal Server Error"}, 500 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=5000)
