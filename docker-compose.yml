@@ -16,22 +16,25 @@ services:
             dockerfile: ./Dockerfile
         depends_on:
             - redis-db
-        image: rguarneros065/flask-redis-gene_api:1.0 
-        ports:
-            - 5000:5000
-        command: [api.py] # AI used to run the api 
+        image: rguarneros065/flask-worldpop_api:1.0 
+        # ports:
+        #     - 5000:5000
+        command: ["python", "api.py"] # AI used to run the api 
         environment: # AI used to add environment 
-        - REDIS_HOST=redis-db
-        - LOG_LEVEL=WARNING
+        # - REDIS_HOST=redis-db
+        - REDIS_HOST=127.0.0.1
+        - LOG_LEVEL=DEBUG # change to WARNING after 
+        network_mode: host
     worker: 
         build: 
             context: ./ 
             dockerfile: ./Dockerfile
         depends_on: 
             - redis-db
-        image: rguarneros065/flask-redis-gene_api:1.0   
-        command: [worker.py] 
+        image: rguarneros065/flask-worldpop_api:1.0 
+        command: ["python", "worker.py"]
         environment: 
-        - REDIS_HOST=redis-db
-        - LOG_LEVEL=WARNING
+        # - REDIS_HOST=redis-db
+        - REDIS_HOST=127.0.0.1
+        - LOG_LEVEL=DEBUG # change to WARNING after 
     
