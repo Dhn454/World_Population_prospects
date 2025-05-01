@@ -84,7 +84,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
         plt.title(f"{query1} vs Year by Location")
         plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0)
         plt.grid(True)
-        plt.show()
+        plt.savefig(f'{jobid}.png', bbox_inches='tight')
     
     elif plot_type == "bar":
         val_over_time = []
@@ -217,6 +217,10 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
         ani = animation.FuncAnimation(fig, update, frames=len(Time_range), repeat=True, interval=1000)
     else:
         raise ValueError("Invalid plot type. Choose 'line', 'bar', or 'scatter'.")
+    
+    with open(f'{jobid}.png', 'rb') as f:
+        image_data = f.read()
+    resdb.hset(jobid, 'image', image_data)
 
 @q.worker
 def update(jobid: str): 
