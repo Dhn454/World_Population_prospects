@@ -107,7 +107,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
         if animate:
             def update(frame):
                 year = years_int[frame]
-                title.set_text(f"{query} in {year}")
+                title.set_text(f"{query1} in {year}")
                 for bar, height, text in zip(bars, val_over_time[frame], texts):
                     bar.set_height(height)
                     text.set_y(height)
@@ -224,7 +224,11 @@ def update(jobid: str):
         job_dict = get_job_by_id(jobid)
         if "error" in job_dict:
             raise Exception(f"Error retrieving job {jobid}: {job_dict['error']}")
+        
+        new_data = manipulate_data(job_dict) 
 
+        plot_data(new_data, jobid, job_dict["start_year"], job_dict["end_year"], job_dict["plot_type"], 
+                  job_dict["Location"], job_dict["query1"], job_dict["query2"], job_dict["animate"])
 
     except Exception as e:
         update_job_status(jobid, 'error')  # If something goes wrong, mark job as error.
