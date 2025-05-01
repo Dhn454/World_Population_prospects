@@ -1,20 +1,14 @@
 import redis 
-import json 
-from collections import Counter 
 import os
-import argparse 
-import socket 
 import logging 
 from hotqueue import HotQueue 
 from jobs import update_job_status, get_job_by_id
-from datetime import datetime
 import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import numpy as np
-import pandas as pd
 from collections import defaultdict
 from sklearn.linear_model import LinearRegression
 
