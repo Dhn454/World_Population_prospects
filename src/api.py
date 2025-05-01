@@ -398,6 +398,23 @@ def get_region_eras(eras:str, region:str) -> List[dict]:
         logging.error(f"Raised exception '{e}'")
         return {"error": f"Raised exception '{e}'"}, 500
 
+@app.route('/help', methods=['GET']) 
+def get_help(): 
+    return """
+submit a job:
+curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "line"}' -H "Content-Type: application/json"
+
+submit a job with specified regions:
+curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "2023", "plot_type": "bar", "Location": "Asia,Europe,Mexico"}' -H "Content-Type: application/json"
+
+submit a job with specified data for x and y:
+curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "scatter", "Location": "Asia", "query1": "NRR", "query2": "TFR"}' -H "Content-Type: application/json"
+
+submit a job with specified animation:
+curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "line", "query1": "NRR", "query2": "TFR", "animation": "True"}' -H "Content-Type: application/json"
+"""
+
+
 @app.route('/jobs', methods=['GET','POST']) 
 def get_jobs() -> Union[list, str]: 
     """
