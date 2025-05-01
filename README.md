@@ -29,17 +29,22 @@ This project now includes functionality for managing jobs through a queue system
 
 Here is the full list of routes metioned above and their syntax: 
 
-|  Route            |  Method  | Functionality                                                                     |
-| ----------------- | -------- | --------------------------------------------------------------------------------- | 
-| /data             | GET      | Put data into Redis                                                               |
-| /data             | POST     | Return all data from Redis                                                        | 
-| /data             | DELETE   | Delete all data from Redis                                                        | 
-| /genes            | GET      | Return json-formatted list of all hgnc_ids                                        | 
-| /genes/{hgnc_id}  | GET      | Return all data associated with {hgnc_id}                                         | 
-| /jobs/            | GET      | Return all job IDs                                                                | 
-| /jobs/            | POST     | Submits a new job to the queue by sending start and end dates in the request body | 
-| /jobs/{jobid}     | GET      | Return all data associated with a {jobid}                                         | 
-| /results/{jobid}  | GET      | Return the results associated with a {jobid}                                      | 
+|  Route                              |  Method  | Functionality                                                                     | 
+| ----------------------------------- | -------- | --------------------------------------------------------------------------------- | 
+| /data                               | GET      | Put data into Redis                                                               | 
+| /data                               | POST     | Return all data from Redis                                                        | 
+| /data                               | DELETE   | Delete all data from Redis                                                        | 
+| /years                              | GET      | Return json-formatted list of all the years available from the dataset            | 
+| /years/{year}/regions               | GET      | Return all data associated with a specific year and all its regions               | 
+| /years/{year}/regions?names=a,b,c   | GET      | Return data associated with a specific year and the specified regions             | 
+| /regions                            | GET      | Return a list of all regions/countries in the dataset                             | 
+| /regions/{region}                   | GET      | Return data of all the years for a specific {region}                              | 
+| /results/{region}/{eras}            | GET      | Return data for a specific region and the specified eras/years                    | 
+| /jobs                               | GET      | Return a list of all job IDs                                                      |
+| /help                               | GET      | Returns instructions to post a job                                                | 
+| /jobs                               | POST     | Submits a new job to the queue by sending a json dictionary in the request body   | 
+| /jobs/{jobid}                       | GET      | Return all data associated with a {jobid}                                         | 
+| /results/{jobid}                    | GET      | Return the results associated with a {jobid}                                      | 
 
 This project illustrates how to ingest data from a Web API using the ```requests``` library and saving it to a persistent redis database using the ```redis``` library. It also helps facilitate the analysis of such data by using the five functions and three routes mentioned above. 
 
@@ -61,6 +66,63 @@ The [HGNC Data Set](https://www.genenames.org/download/archive/) is a comprehens
 Each entry in the dataset corresponds to a specific human gene and contains detailed information, including the gene’s approved symbol, name, previous symbols, aliases, and database cross-references. The dataset also includes various identifiers linking each gene to external databases such as Ensembl, Entrez, RefSeq, UniProt, and OMIM. 
 
 The dataset is available in multiple formats, including JSON, TXT, and XML, allowing for easy integration into bioinformatics pipelines and applications. It is regularly updated to reflect the latest changes in gene nomenclature and new discoveries in the field of genetics.
+
+| Acronym         | Description                                                                | How to Query                  |
+|-----------------|----------------------------------------------------------------------------|-------------------------------|
+| TPopulation1Jan | Total Population, as of 1 January (thousands)                              | "query1": "TPopulation1Jan"   |
+| TPopulation1July| Total Population, as of 1 July (thousands)                                 | "query1": "TPopulation1July"  |
+| TPopulationMale1July | Male Population, as of 1 July (thousands)                             | "query1": "TPopulationMale1July" |
+| TPopulationFemale1July | Female Population, as of 1 July (thousands)                         | "query1": "TPopulationFemale1July" |
+| PopDensity      | Population Density, as of 1 July (persons per square km)                   | "query1": "PopDensity"        |
+| PopSexRatio     | Population Sex Ratio, as of 1 July (males per 100 females)                 | "query1": "PopSexRatio"       |
+| MedianAgePop    | Median Age, as of 1 July (years)                                           | "query1": "MedianAgePop"      |
+| NatChange       | Natural Change, Births minus Deaths (thousands)                            | "query1": "NatChange"         |
+| NatChangeRT     | Rate of Natural Change (per 1,000 population)                              | "query1": "NatChangeRT"       |
+| PopChange       | Population Change (thousands)                                              | "query1": "PopChange"         |
+| PopGrowthRate   | Population Growth Rate (percentage)                                        | "query1": "PopGrowthRate"     |
+| DoublingTime    | Population Annual Doubling Time (years)                                    | "query1": "DoublingTime"      |
+| Births          | Births (thousands)                                                         | "query1": "Births"            |
+| Births1519      | Births by women aged 15 to 19 (thousands)                                  | "query1": "Births1519"        |
+| CBR             | Crude Birth Rate (births per 1,000 population)                             | "query1": "CBR"               |
+| TFR             | Total Fertility Rate (live births per woman)                               | "query1": "TFR"               |
+| NRR             | Net Reproduction Rate (surviving daughters per woman)                      | "query1": "NRR"               |
+| MAC             | Mean Age Childbearing (years)                                              | "query1": "MAC"               |
+| SRB             | Sex Ratio at Birth (males per 100 female births)                           | "query1": "SRB"               |
+| Deaths          | Total Deaths (thousands)                                                   | "query1": "Deaths"            |
+| DeathsMale      | Male Deaths (thousands)                                                    | "query1": "DeathsMale"        |
+| DeathsFemale    | Female Deaths (thousands)                                                  | "query1": "DeathsFemale"      |
+| CDR             | Crude Death Rate (deaths per 1,000 population)                             | "query1": "CDR"               |
+| LEx             | Life Expectancy at Birth, both sexes (years)                               | "query1": "LEx"               |
+| LExMale         | Male Life Expectancy at Birth (years)                                      | "query1": "LExMale"           |
+| LExFemale       | Female Life Expectancy at Birth (years)                                    | "query1": "LExFemale"         |
+| LE15            | Life Expectancy at Age 15, both sexes (years)                              | "query1": "LE15"              |
+| LE15Male        | Male Life Expectancy at Age 15 (years)                                     | "query1": "LE15Male"          |
+| LE15Female      | Female Life Expectancy at Age 15 (years)                                   | "query1": "LE15Female"        |
+| LE65            | Life Expectancy at Age 65, both sexes (years)                              | "query1": "LE65"              |
+| LE65Male        | Male Life Expectancy at Age 65 (years)                                     | "query1": "LE65Male"          |
+| LE65Female      | Female Life Expectancy at Age 65 (years)                                   | "query1": "LE65Female"        |
+| LE80            | Life Expectancy at Age 80, both sexes (years)                              | "query1": "LE80"              |
+| LE80Male        | Male Life Expectancy at Age 80 (years)                                     | "query1": "LE80Male"          |
+| LE80Female      | Female Life Expectancy at Age 80 (years)                                   | "query1": "LE80Female"        |
+| InfantDeaths    | Infant Deaths, under age 1 (thousands)                                     | "query1": "InfantDeaths"      |
+| IMR             | Infant Mortality Rate (infant deaths per 1,000 live births)                | "query1": "IMR"               |
+| LBsurvivingAge1 | Live births Surviving to Age 1 (thousands)                                 | "query1": "LBsurvivingAge1"   |
+| Under5Deaths    | Deaths under age 5 (thousands)                                             | "query1": "Under5Deaths"      |
+| Q5              | Under-five Mortality Rate (deaths under age 5 per 1,000 live births)       | "query1": "Q5"                |
+| Q0040           | Mortality before Age 40, both sexes (per 1,000 live births)                | "query1": "Q0040"             |
+| Q0040Male       | Male mortality before Age 40                                               | "query1": "Q0040Male"         |
+| Q0040Female     | Female mortality before Age 40                                             | "query1": "Q0040Female"       |
+| Q0060           | Mortality before Age 60, both sexes                                        | "query1": "Q0060"             |
+| Q0060Male       | Male mortality before Age 60                                               | "query1": "Q0060Male"         |
+| Q0060Female     | Female mortality before Age 60                                             | "query1": "Q0060Female"       |
+| Q1550           | Mortality between Age 15 and 50, both sexes                                | "query1": "Q1550"             |
+| Q1550Male       | Male mortality between Age 15 and 50                                       | "query1": "Q1550Male"         |
+| Q1550Female     | Female mortality between Age 15 and 50                                     | "query1": "Q1550Female"       |
+| Q1560           | Mortality between Age 15 and 60, both sexes                                | "query1": "Q1560"             |
+| Q1560Male       | Male mortality between Age 15 and 60                                       | "query1": "Q1560Male"         |
+| Q1560Female     | Female mortality between Age 15 and 60                                     | "query1": "Q1560Female"       |
+| NetMigrations   | Net Number of Migrants (thousands)                                         | "query1": "NetMigrations"     |
+| CNMR            | Net Migration Rate (per 1,000 population)                                  | "query1": "CNMR"              |
 
 For more information, visit: [HGNC Download Archive](https://www.genenames.org/download/archive/) 
 
