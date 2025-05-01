@@ -6,13 +6,16 @@ all:
 down: 
 	docker compose down 
 
-redis-up:
+redis:
+	docker compose down redis-db
 	docker compose up --build -d redis-db 
 
-api-up: 
+api: 
+	docker compose down flask-app
 	curl -o ./data/WPP2024_Demographic_Indicators_Medium.csv.gz "https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz"
 	docker compose up --build -d flask-app 
 
-worker-up: 
+worker: 
+	docker compose down worker 
 	docker compose up --build -d worker 
 
