@@ -33,13 +33,16 @@ def _generate_jid() -> str:
     logging.debug(f"Generated job ID: {jid}")
     return jid
 
-def _instantiate_job(jid, status, start, end) -> dict:
+def _instantiate_job(jid, status, data_dict):
     """
     Create the job object description as a python dictionary.
     """
-    job = {'id': jid, 'status': status, 'start': start, 'end': end}
+    job = {'id': jid, 'status': status, 'start': data_dict.get('start'), 'end': data_dict.get('end'), 
+           'plot_type': data_dict.get('plot_type'), 'location': data_dict.get('Location'), 
+           'query1': data_dict.get('query1'), 'query2': data_dict.get('query2'), 'animate': data_dict.get('animate')}
+    job = {k: v for k, v in job.items() if v is not None} 
     logging.debug(f"Instantiated job: {job}")
-    return job
+    return job 
 
 def _save_job(jid, job_dict):
     """Save a job object in the Redis database."""
@@ -57,11 +60,11 @@ def _queue_job(jid):
     except Exception as e:
         logging.error(f"Failed to queue job {jid}: {e}")
 
-def add_job(start, end, status="submitted") -> dict:
+def add_job(data_dict, status="submitted") -> dict:
     """Add a job to the redis queue."""
-    logging.info(f"Adding new job with start={start} and end={end}")
+    logging.info(f"Adding new job.")
     jid = _generate_jid()
-    job_dict = _instantiate_job(jid, status, start, end)
+    job_dict = _instantiate_job(jid, status, data_dict) 
     _save_job(jid, job_dict)
     _queue_job(jid)
     return job_dict
