@@ -179,7 +179,7 @@ def get_all_years() -> List[str]:
         return {"error": "Internal Server Error"}, 500
 
 @app.route('/years/<years>/regions', methods=['GET']) 
-def get_year(years:str) -> dict: 
+def get_year(years:str, region_names=None) -> dict: 
     """
     This route uses the GET method to retrieve a certain hgnc_id field 
     and the dictionary with all of its key:value pairs. 
@@ -193,7 +193,16 @@ def get_year(years:str) -> dict:
         response (dict): Returns a dictionary with all of the key:value
                          pairs of the specified hgnc_id field. 
     """
-    region_names = request.args.get("names", "")
+
+    try:
+        # Try to get region names from Flask request if available
+        if region_names is None:
+            region_names = request.args.get("names", "")
+    except Exception as e:
+        # We're not in a Flask request context
+        if region_names is None:
+            region_names = ""
+
     regions = region_names.split(",") if region_names else []
 
     try:
@@ -389,28 +398,6 @@ def get_region_eras(eras:str, region:str) -> List[dict]:
         logging.error(f"Raised exception '{e}'")
         return {"error": f"Raised exception '{e}'"}, 500
 
-
-def is_valid_date(date_str:str) -> bool: # boolean function
-    """
-    This function checks if the input is a properly formatted string
-    that represents time in the 'YYYY-MM-DD' format. 
-
-    Args: 
-        date_str (str): string representing time in 'YYYY-MM-DD' format. 
-
-    Returns: 
-        boolean: Returns a boolean (True or False)
-    """
-    if not isinstance(date_str, str): 
-        logging.warning(f"Invalid type for date: {date_str} (type: {type(date_str)})")
-        return False
-    try: 
-        datetime.strptime(date_str, "%Y-%m-%d") # AI helped to strip time to check if its a string
-        return True 
-    except ValueError: 
-        logging.warning(f"Invalid date format for string: {date_str}")
-        return False 
-
 @app.route('/jobs', methods=['GET','POST']) 
 def get_jobs() -> Union[list, str]: 
     """
@@ -433,19 +420,17 @@ def get_jobs() -> Union[list, str]:
         try: 
             data = request.get_json()
             logging.debug(f"POST data received")
-            start = data.get('date_approved_start') # AI helped to understand syntax 
-            end = data.get('date_approved_end')
-            if not (is_valid_date(start) and is_valid_date(end)):
-                logging.error("Invalid date format received")
-                return {"error": "Invalid date format. Dates must be strings in 'YYYY-MM-DD' format."
-                        }, 400 
-            start_num = datetime.strptime(start, "%Y-%m-%d") # AI helped convert it to compare 
-            end_num = datetime.strptime(end, "%Y-%m-%d") 
-            if end_num<start_num:
-                logging.error("End date is before start date")
-                return {"error": "date_approved_end must be the same as or after date_approved start." 
-                        }, 400 
-            job_info = add_job(start, end) 
+
+            years = [key.decode('utf-8') for key in rd.keys()]
+            if not years:
+                return {"Database empty!"}
+            if data.get("start") not in years and data.get("end") not in years: 
+                logging.error("Start and end dates were empty.") 
+                return {"error": "Please provide a start and end date."}, 400  
+            if not data.get("plot_type"):
+                logging.error("Could not create job. Missing parameters.")
+                return {"error": "Please provide a plot type option."}, 400 
+            job_info = add_job(data) 
             logging.info(f"Job created successfully: {job_info}")
             return f'Job created: {job_info}\n' 
         except Exception as e: 
