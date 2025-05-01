@@ -3,6 +3,7 @@ import os
 import logging 
 from hotqueue import HotQueue 
 from jobs import update_job_status, get_job_by_id
+from api import get_year 
 import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -10,6 +11,7 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import numpy as np
 from collections import defaultdict
+import requests
 from sklearn.linear_model import LinearRegression
 
 _redis_port=6379 
@@ -30,7 +32,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("Logging level set to %s", log_level)
 
-def manipulate_data(jid):
+def manipulate_data(job_data):
     """This funciton converts the list of dictionaries into a single dictionary of dictionaries
     
 
@@ -38,8 +40,15 @@ def manipulate_data(jid):
         data (_type_): _description_
 
     """
-    raw_data = q.get(jid)
+    start = job_data.get('start')
+    end = job_data.get('end') 
+    regions = job_data.get('location')
+    raw_data = get_year(f'{start}-{end}', regions)
+    # raw_data = raw_data.json() 
     new_data = defaultdict(lambda: defaultdict(list))
+    logging.debug(f"Type of raw_data: {type(raw_data)}")
+    logging.debug(f'Parameters: {start}-{end}, {regions}')
+    logging.debug(f"raw_data: {raw_data}")
     for entry in raw_data:
         year = entry["Time"]
         location = entry["Location"]
@@ -49,11 +58,13 @@ def manipulate_data(jid):
 def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, query1=None, query2=None, animate=False):
     """
     """
+    Location = Location or []
+
     Time_range = [str(year) for year in range(start_year, end_year + 1)]
     years_int = [int(y) for y in Time_range]
     num_locations = len(Location) if Location else 0
     
-    if Location: Location.sort();
+    if Location: Location.sort()
     
     if plot_type == "line":
         for location in Location:
@@ -117,7 +128,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
         if not animate:
             x_vals, y_vals, labels = [], [], []
             
-            for loc in location:
+            for loc in Location:
                 try:
                     entry = new_data[year][loc][0]
                     x = float(entry[query1])
@@ -216,19 +227,22 @@ def update(jobid: str):
 
         # WORK STARTING  
         job_dict = get_job_by_id(jobid)
+        logging.debug(f'job_dict is of type: {type(job_dict)}')
+        logging.debug(f'job_dict has data: {job_dict}')
         if "error" in job_dict:
             raise Exception(f"Error retrieving job {jobid}: {job_dict['error']}")
         
         new_data = manipulate_data(job_dict) 
+        logging.debug(f'new_data is of type: {type(new_data)}')
+        logging.debug(f'new_data dictionaries: {new_data.keys()}')
+        logging.debug(f'new_data: {new_data}')
 
-        plot_data(new_data, jobid, job_dict["start_year"], job_dict["end_year"], job_dict["plot_type"], 
-                  job_dict["Location"], job_dict["query1"], job_dict["query2"], job_dict["animate"])
+        plot_data(new_data, jobid, int(job_dict["start"]), int(job_dict["end"]), job_dict["plot_type"], 
+                  job_dict.get("Location"), job_dict.get("query1"), job_dict.get("query2"), job_dict.get("animate"))
 
+        update_job_status(jobid, 'complete') 
     except Exception as e:
         update_job_status(jobid, 'error')  # If something goes wrong, mark job as error.
         logging.error(f"Error processing job {jobid}: {e}") 
-    update_job_status(jobid, 'in progress') 
-    time.sleep(15) # sleeps for 15 seconds to mock work being done 
-    update_job_status(jobid, 'complete') 
 
 update() 
