@@ -9,6 +9,14 @@ from hotqueue import HotQueue
 from jobs import update_job_status, get_job_by_id
 from datetime import datetime
 import time
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
+import numpy as np
+import pandas as pd
+from collections import defaultdict
+from sklearn.linear_model import LinearRegression
 
 _redis_port=6379 
 _redis_host = os.environ.get("REDIS_HOST") # AI used to understand environment function 
@@ -28,63 +36,199 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("Logging level set to %s", log_level)
 
+def manipulate_data(jid):
+    """This funciton converts the list of dictionaries into a single dictionary of dictionaries
+    
+
+    Args:
+        data (_type_): _description_
+
+    """
+    raw_data = q.get(jid)
+    new_data = defaultdict(lambda: defaultdict(list))
+    for entry in raw_data:
+        year = entry["Time"]
+        location = entry["Location"]
+        new_data[year][location].append(entry)
+    return {year: dict(locations) for year, locations in new_data.items()}
+
+def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, query1=None, query2=None, animate=False):
+    """
+    """
+    Time_range = [str(year) for year in range(start_year, end_year + 1)]
+    years_int = [int(y) for y in Time_range]
+    num_locations = len(Location) if Location else 0
+    
+    if Location: Location.sort();
+    
+    if plot_type == "line":
+        for location in Location:
+            values = []
+            for year in Time_range:
+                try:
+                    entry = new_data[year][location][0]
+                    val = float(entry[query1])
+                except (KeyError, IndexError, ValueError):
+                    val = None
+                values.append(val)
+                
+            if any(val is not None for val in values):
+                plt.plot(years_int, values, label=location)
+        plt.xlabel("Year")
+        plt.ylabel(f'{query1}')
+        plt.title(f"{query1} vs Year by Location")
+        plt.legend(loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0)
+        plt.grid(True)
+        plt.show()
+    
+    elif plot_type == "bar":
+        val_over_time = []
+        for year in Time_range:
+            year_values = []
+            for location in Location:
+                try:
+                    val = float(new_data[year][location][0][query1])
+                except (KeyError, IndexError, ValueError):
+                    val = None
+                year_values.append(val)
+            val_over_time.append(year_values)
+                    
+        cmap = plt.colormaps.get_cmap('Pastel1').resampled(num_locations)
+        colors = [mcolors.to_hex(cmap(i)) for i in range(num_locations)]
+        fig, ax = plt.subplots(figsize=(10, 6))
+        bars = ax.bar(Location, val_over_time[0], color=colors)
+        ax.set_ylim(0, max(max(row) for row in val_over_time) * 1.1)
+        ax.set_ylabel(f"{query1}")
+        title = ax.set_title(f"{query1} in {years_int[0]}")
+        
+        texts = [ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f"{(bar.get_height()):,}", 
+                 ha='center', va='bottom', fontsize=9) for bar in bars]
+        
+        if animate:
+            def update(frame):
+                year = years_int[frame]
+                title.set_text(f"{query} in {year}")
+                for bar, height, text in zip(bars, val_over_time[frame], texts):
+                    bar.set_height(height)
+                    text.set_y(height)
+                    text.set_text(f"{(height):,}")
+                    
+            ani = animation.FuncAnimation(fig, update, frames=len(years_int), repeat=True, interval=1000)
+            ani.show()
+        
+        else:
+            plt.show()
+            
+    elif plot_type == "scatter":
+        if not animate:
+            x_vals, y_vals, labels = [], [], []
+            
+            for loc in location:
+                try:
+                    entry = new_data[year][loc][0]
+                    x = float(entry[query1])
+                    y = float(entry[query2])
+                    x_vals.append(x)
+                    y_vals.append(y)
+                    labels.append(loc)
+                except (KeyError, IndexError, ValueError):
+                    continue
+            plt.figure(figsize=(10, 6))
+            plt.scatter(x_vals, y_vals, alpha=0.7)
+            
+            for i, label in enumerate(labels):
+                plt.text(x_vals[i], y_vals[i], label, fontsize=8, ha='right', va='center')
+            plt.xlabel(query1)
+            plt.ylabel(query2)
+            plt.title(f"{query1} vs {query2} in {year}")
+            plt.grid(True)
+            plt.tight_layout()
+            plt.show()
+        else:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            sc = ax.scatter([], [], alpha=0.7)
+            reg_line, = ax.plot([], [], color='red', lw=2, label='Regression Line')
+            title = ax.set_title("")
+            xlabel = ax.set_xlabel(query1)
+            ylabel = ax.set_ylabel(query2)
+            x_vals_all, y_vals_all = [], []
+            for year in Time_range:
+                for loc in new_data[year]:
+                    try:
+                        entry = new_data[year][loc][0]
+                        x_vals_all.append(float(entry[query1]))
+                        y_vals_all.append(float(entry[query2]))
+                    except (KeyError, IndexError, ValueError):
+                        continue
+                    
+            x_min, x_max = min(x_vals_all), max(x_vals_all)
+            y_min, y_max = min(y_vals_all), max(y_vals_all)
+            x_pad = (x_max - x_min) * 0.1
+            y_pad = (y_max - y_min) * 0.1
+            x_lim = (x_min - x_pad, x_max + x_pad)
+            y_lim = (y_min - y_pad, y_max + y_pad)
+            
+            unigue_locations = set()
+            for year in Time_range:
+                unigue_locations.update(new_data[year].keys())
+            unique_locations = sorted(unigue_locations)
+            cmap = plt.colormaps.get_cmap('plasma').resampled(num_locations)
+            loc_to_color = {loc: cmap(i) for i, loc in enumerate(unigue_locations)}
+        def update(frame):
+            year = Time_range[frame]
+            x_vals, y_vals, labels = [], [], []
+            
+            for loc in new_data[year]:
+                try:
+                    entry = new_data[year][loc][0]
+                    x = float(entry[query1])
+                    y = float(entry[query2])
+                    x_vals.append(x)
+                    y_vals.append(y)
+                    labels.append(loc)
+                except (KeyError, IndexError, ValueError):
+                    continue
+            ax.clear()
+            ax.set_xlabel(query1)
+            ax.set_ylabel(query2)
+            ax.set_title(f"{query1} vs {query2} in {year}")
+            ax.grid(True)
+            ax.set_xlim(x_lim)
+            ax.set_ylim(y_lim)
+            colors = [loc_to_color[loc] for loc in labels]
+            ax.scatter(x_vals, y_vals, color=colors, alpha=1)
+            
+            if len(x_vals) > 1:
+                X = np.array(x_vals).reshape(-1, 1)
+                y = np.array(y_vals)
+                model = LinearRegression().fit(X,y)
+                x_fit = np.linspace(x_lim[0], x_lim[1], 100).reshape(-1, 1)
+                y_fit = model.predict(x_fit)
+                ax.plot(x_fit, y_fit, color='red', lw=2, label='Regression Line')
+                ax.legend()
+                handles = [plt.Line2D([0], [0], marker='o', color='w', label=loc,
+                                       markerfacecolor=loc_to_color[loc], markersize=10) for loc in unique_locations]
+        
+        ani = animation.FuncAnimation(fig, update, frames=len(Time_range), repeat=True, interval=1000)
+    else:
+        raise ValueError("Invalid plot type. Choose 'line', 'bar', or 'scatter'.")
+
 @q.worker
 def update(jobid: str): 
-    """
-    Uses the hotqueue decorator to get jobs off a queue and process them. It filters gene 
-    entries based on the approved date range and counts their occurences by 'locus_type'. 
-    The results are then stored in a results database, and the job is updated to 'completed' status.
-    
-    Args:
-        jobid (str): A string representing the unique job ID to be processed.
 
-    Returns:
-        NONE
-    """
-    # logging.info(f"Started processing job: {jobid}")
-    # try:
-    #     update_job_status(jobid, 'in progress')
+    logging.info(f"Started processing job: {jobid}")
+    try:
+        update_job_status(jobid, 'in progress')
 
-    #     # WORK STARTING  
-    #     job_dict = get_job_by_id(jobid)
-    #     if "error" in job_dict:
-    #         raise Exception(f"Error retrieving job {jobid}: {job_dict['error']}")
+        # WORK STARTING  
+        job_dict = get_job_by_id(jobid)
+        if "error" in job_dict:
+            raise Exception(f"Error retrieving job {jobid}: {job_dict['error']}")
 
-    #     start = datetime.strptime(job_dict["start"], "%Y-%m-%d")
-    #     end = datetime.strptime(job_dict["end"], "%Y-%m-%d") 
-    #     keys = rd.keys()
-    #     locus_types = []
 
-    #     for item in keys:
-    #         try:
-    #             data = rd.get(item)
-    #             if not data:
-    #                 continue
-    #             data_dict = json.loads(data.decode("utf-8"))
-                
-    #             date_str = data_dict.get("date_approved_reserved")
-    #             if not date_str:
-    #                 continue
-
-    #             date = datetime.strptime(date_str, "%Y-%m-%d")
-    #             if start <= date <= end:
-    #                 locus_type = data_dict.get("locus_type")
-    #                 if locus_type:
-    #                     locus_types.append(locus_type)
-    #         except Exception as e:
-    #             logging.error(f"Error processing key {item}: {e}")
-
-    #     if not locus_types:
-    #         results = {"message": "No genes found in the specified date range."}
-    #     else:
-    #         results = Counter(locus_types)
-
-    #     resdb.set(jobid, json.dumps(results))
-    #     update_job_status(jobid, 'complete')
-
-    # except Exception as e:
-    #     update_job_status(jobid, 'error')  # If something goes wrong, mark job as error.
-    #     logging.error(f"Error processing job {jobid}: {e}") 
+    except Exception as e:
+        update_job_status(jobid, 'error')  # If something goes wrong, mark job as error.
+        logging.error(f"Error processing job {jobid}: {e}") 
     update_job_status(jobid, 'in progress') 
     time.sleep(15) # sleeps for 15 seconds to mock work being done 
     update_job_status(jobid, 'complete') 
