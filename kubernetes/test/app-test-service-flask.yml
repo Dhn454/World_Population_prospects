@@ -10,5 +10,5 @@ spec:
     app: test-flask-app
   ports:
     - port: 5000       # the port other pods will use to talk to Flask
-      targetPort: 5000 # the port your Flask app listens on in the container
+      targetPort: 5000 # the port the Flask app listens on in the container
   type: ClusterIP

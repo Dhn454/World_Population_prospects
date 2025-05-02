@@ -7,8 +7,9 @@ metadata:
     app: test-redis-service
 spec:
   selector:
-    app: test-redis-deployment
+    app: test-deployment-redis
   ports:
     - port: 6379
       targetPort: 6379
   type: ClusterIP
+ 

@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prod-redis-service
+  labels:
+    app: prod-redis-service
+spec:
+  selector:
+    app: prod-deployment-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  type: ClusterIP
+ 
