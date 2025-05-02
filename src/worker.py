@@ -2,7 +2,7 @@ import redis
 import os
 import logging 
 from hotqueue import HotQueue 
-from jobs import update_job_status, get_job_by_id
+from jobs import update_job_status, get_job_by_id, string_to_bool
 from api import get_year 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -30,14 +30,6 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 logger.info("Logging level set to %s", log_level)
-
-def string_to_bool(string):
-    if string.lower() == "true":
-        return True
-    elif string.lower() == "false":
-        return False
-    else:
-        raise ValueError("Invalid boolean string")
 
 def manipulate_data(job_data):
     """This funciton converts the list of dictionaries into a single dictionary of dictionaries

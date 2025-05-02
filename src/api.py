@@ -13,7 +13,7 @@ import re
 import os
 import pandas as pd 
 from collections import defaultdict 
-from jobs import add_job, get_job_by_id, get_all_jobs, get_results 
+from jobs import add_job, get_job_by_id, get_all_jobs, get_results, string_to_bool 
 
 _redis_host = os.environ.get("REDIS_HOST") # AI used to understand environment function 
 _redis_port = 6379
@@ -499,10 +499,22 @@ def results(jobid: str) -> Union[dict,tuple]:
 
 @app.route('/download/<jobid>', methods=['GET'])
 def download(jobid):
-    path = f'/app/{jobid}.png'
-    with open(path, 'wb') as f:
-        f.write(resdb.hget(jobid, 'image'))   # 'resdb' is a client to the results db
-    return send_file(path, mimetype='image/png', as_attachment=True)
+    job_dict = get_job_by_id(jobid)
+    flag = string_to_bool(job_dict.get("animate"))
+    logging.debug(f'job_dict is {job_dict}')
+    logging.debug(f'job_dict animate option is {job_dict.get("animate")}')
+    logging.debug(f'flag is {flag}')
+    if flag: 
+        logging.debug(f'We are in!!')
+        path = f'/app/{jobid}.gif'
+        with open(path, 'wb') as f:
+            f.write(resdb.hget(jobid, 'gif'))   # 'resdb' is a client to the results db
+        return send_file(path, mimetype='image/gif', as_attachment=True)
+    else: 
+        path = f'/app/{jobid}.png'
+        with open(path, 'wb') as f:
+            f.write(resdb.hget(jobid, 'image'))   # 'resdb' is a client to the results db
+        return send_file(path, mimetype='image/png', as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

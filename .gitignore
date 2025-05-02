@@ -9,3 +9,9 @@
 
 #ignore all .gif files
 *.gif
+
+#ignore __pychache
+__pycache__
+
+#ignore test file 
+test.py

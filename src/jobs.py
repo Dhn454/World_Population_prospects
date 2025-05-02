@@ -25,6 +25,16 @@ logging.basicConfig(
 
 logging.info("Logging level set to %s", log_level) 
 
+def string_to_bool(string):
+    if string: 
+        if string.lower() == "true":
+            return True
+        elif string.lower() == "false":
+            return False
+        else:
+            logging.warning("Invalid boolean string, defaulting to false.")
+            return False
+
 def _generate_jid() -> str:
     """
     Generate a pseudo-random identifier for a job.
@@ -38,7 +48,7 @@ def _instantiate_job(jid, status, data_dict):
     Create the job object description as a python dictionary.
     """
     job = {'id': jid, 'status': status, 'start': data_dict.get('start'), 'end': data_dict.get('end'), 
-           'plot_type': data_dict.get('plot_type'), 'location': data_dict.get('Location'), 
+           'plot_type': data_dict.get('plot_type'), 'location': data_dict.get('location'), 
            'query1': data_dict.get('query1'), 'query2': data_dict.get('query2'), 'animate': data_dict.get('animate')}
     job = {k: v for k, v in job.items() if v is not None} 
     logging.debug(f"Instantiated job: {job}")
