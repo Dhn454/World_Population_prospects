@@ -292,6 +292,8 @@ def get_regions() -> dict:
         for item in keys:
             locations_set.update(loc["Location"] for loc in json.loads(rd.get(item).decode('utf-8')))
         locations = list(locations_set)
+        logging.debug(f'Type of locations: {type(locations)}')
+        locations.sort()
         return locations 
     except TypeError as e: 
         logging.error(f"Raised exception '{e}'") 
@@ -464,7 +466,7 @@ def get_jobs() -> Union[list, str]:
     return jsonify({"error": f"Method {request.method} Not Allowed."}), 405
 
 
-@app.route('/jobs/<jobid>', methods=['GET']) 
+@app.route('/jobs/<jobid>', methods=['GET', 'DELETE']) 
 def get_job(jobid: str) -> Union[dict,tuple]: 
     """
     This route uses the GET method to retrieve a job's information
@@ -480,13 +482,21 @@ def get_job(jobid: str) -> Union[dict,tuple]:
         tuple: A tuple with an error dictionary and HTTP status code 500
                if an exception occurs.
     """
-    try: 
-        job = get_job_by_id(jobid)
-        logging.debug(f"Job fetched: {job}")
-        return job
-    except Exception as e: 
-        logging.error(f"Error fetching job {jobid}: {e}")
-        return {"error": "Internal Server Error"}, 500      
+    if request.method == 'GET':
+        try: 
+            job = get_job_by_id(jobid)
+            logging.debug(f"Job fetched: {job}")
+            return job
+        except Exception as e: 
+            logging.error(f"Error fetching job {jobid}: {e}")
+            return {"error": "Internal Server Error"}, 500  
+    elif request.method == 'DELETE': 
+        jdb.delete(jobid) 
+        logging.debug(f'Deleted {jobid} job from Redis database')
+        return f'Deleted {jobid} job from Redis database\n' 
+
+    logging.warning(f"Method {request.method} not allowed on /jobs")
+    return jsonify({"error": f"Method {request.method} Not Allowed."}), 405    
 
 @app.route('/results', defaults={'jobid': None}, methods=['GET', 'DELETE']) # able to delete all results from database
 @app.route('/results/<jobid>', methods=['GET', 'DELETE']) 
