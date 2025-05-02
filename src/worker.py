@@ -150,9 +150,44 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
             
             
     elif plot_type == "scatter":
-        if not animate:
-            x_vals, y_vals, labels = [], [], []
+        fig, ax = plt.subplots(figsize=(10, 6))
+        sc = ax.scatter([], [], alpha=1)
+        reg_line, = ax.plot([], [], color='red', lw=2, label='Regression Line')
+        title = ax.set_title("")
+        xlabel = ax.set_xlabel(f"{query1}")
+        ylabel = ax.set_ylabel(f"{query2}")
+        
+        x_vals_all, y_vals_all = [], []
+        for year in Time_range:
+            for loc in Location:
+                try:
+                    entry = new_data[year][loc][0]
+                    x_vals_all.append(float(entry[query1]))
+                    y_vals_all.append(float(entry[query2]))
+                except (KeyError, IndexError, ValueError):
+                    continue
+        x_min, x_max = min(x_vals_all), max(x_vals_all)
+        y_min, y_max = min(y_vals_all), max(y_vals_all)
+        x_pad = (x_max - x_min) * 0.1
+        y_pad = (y_max - y_min) * 0.1
+        x_lim = (x_min - x_pad, x_max + x_pad)
+        y_lim = (y_min - y_pad, y_max + y_pad)
+        
+        unique_locations = sorted({loc for year in Time_range for loc in new_data[year].keys()})
+        num_locations = len(unique_locations)
+        cmap = plt.colormaps.get_cmap('plasma').resampled(num_locations)
+        loc_to_color = {loc: cmap(i) for i, loc in enumerate(unique_locations)}
+        
+        def plot_for_year(year):
+            ax.clear()
+            ax.set_xlabel(f"{query1}")
+            ax.set_ylabel(f"{query2}")
+            ax.set_title(f"{query1} vs {query2} in {year}")
+            ax.grid(True)
+            ax.set_xlim(x_lim)
+            ax.set_ylim(y_lim)
             
+            x_vals, y_vals, labels = [], [], []
             for loc in Location:
                 try:
                     entry = new_data[year][loc][0]
@@ -163,90 +198,48 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
                     labels.append(loc)
                 except (KeyError, IndexError, ValueError):
                     continue
-            plt.figure(figsize=(10, 6))
-            plt.scatter(x_vals, y_vals, alpha=0.7)
-            
-            for i, label in enumerate(labels):
-                plt.text(x_vals[i], y_vals[i], label, fontsize=8, ha='right', va='center')
-            plt.xlabel(query1)
-            plt.ylabel(query2)
-            plt.title(f"{query1} vs {query2} in {year}")
-            plt.grid(True)
-            plt.tight_layout()
-            plt.show()
-        else:
-            fig, ax = plt.subplots(figsize=(10, 6))
-            sc = ax.scatter([], [], alpha=0.7)
-            reg_line, = ax.plot([], [], color='red', lw=2, label='Regression Line')
-            title = ax.set_title("")
-            xlabel = ax.set_xlabel(query1)
-            ylabel = ax.set_ylabel(query2)
-            x_vals_all, y_vals_all = [], []
-            for year in Time_range:
-                for loc in new_data[year]:
-                    try:
-                        entry = new_data[year][loc][0]
-                        x_vals_all.append(float(entry[query1]))
-                        y_vals_all.append(float(entry[query2]))
-                    except (KeyError, IndexError, ValueError):
-                        continue
-                    
-            x_min, x_max = min(x_vals_all), max(x_vals_all)
-            y_min, y_max = min(y_vals_all), max(y_vals_all)
-            x_pad = (x_max - x_min) * 0.1
-            y_pad = (y_max - y_min) * 0.1
-            x_lim = (x_min - x_pad, x_max + x_pad)
-            y_lim = (y_min - y_pad, y_max + y_pad)
-            
-            unigue_locations = set()
-            for year in Time_range:
-                unigue_locations.update(new_data[year].keys())
-            unique_locations = sorted(unigue_locations)
-            cmap = plt.colormaps.get_cmap('plasma').resampled(num_locations)
-            loc_to_color = {loc: cmap(i) for i, loc in enumerate(unigue_locations)}
-        
-        def update(frame):
-            year = Time_range[frame]
-            x_vals, y_vals, labels = [], [], []
-            
-            for loc in new_data[year]:
-                try:
-                    entry = new_data[year][loc][0]
-                    x = float(entry[query1])
-                    y = float(entry[query2])
-                    x_vals.append(x)
-                    y_vals.append(y)
-                    labels.append(loc)
-                except (KeyError, IndexError, ValueError):
-                    continue
-            ax.clear()
-            ax.set_xlabel(query1)
-            ax.set_ylabel(query2)
-            ax.set_title(f"{query1} vs {query2} in {year}")
-            ax.grid(True)
-            ax.set_xlim(x_lim)
-            ax.set_ylim(y_lim)
+                
             colors = [loc_to_color[loc] for loc in labels]
-            ax.scatter(x_vals, y_vals, color=colors, alpha=1)
-            
+            ax.scatter(x_vals, y_vals, c=colors, alpha=1)
+        
             if len(x_vals) > 1:
                 X = np.array(x_vals).reshape(-1, 1)
                 y = np.array(y_vals)
-                model = LinearRegression().fit(X,y)
+                model = LinearRegression().fit(X, y)
+                r_squared = model.score(X, y)
                 x_fit = np.linspace(x_lim[0], x_lim[1], 100).reshape(-1, 1)
                 y_fit = model.predict(x_fit)
-                ax.plot(x_fit, y_fit, color='red', lw=2, label='Regression Line')
-                ax.legend()
-                handles = [plt.Line2D([0], [0], marker='o', color='w', label=loc,
-                                       markerfacecolor=loc_to_color[loc], markersize=10) for loc in unique_locations]
+                reg_label = f"Regression Line (R²={r_squared:.2f})"
+                ax.plot(x_fit, y_fit, color='red', lw=2, label=reg_label)
+                location_handles = [plt.Line2D([0], [0], marker='o', linestyle='', color=loc_to_color[loc],
+                                               label=loc, markersize=7) for loc in unique_locations]
+
+                regression_handle = plt.Line2D([0], [0], color='red', lw=2, label=reg_label)
+                all_handles = [regression_handle] + location_handles
+                legend = ax.legend(handles=all_handles, loc='upper left', bbox_to_anchor=(-0.165, 1.165), borderaxespad=0)
+                legend.get_frame().set_facecolor('none')
+                legend.get_frame().set_edgecolor('none')
         
-        ani = animation.FuncAnimation(fig, update, frames=len(Time_range), repeat=True, interval=1000)
+        if animate == True:
+            def update(frame):
+                year = Time_range[frame]
+                plot_for_year(year)
+                
+            ani = animation.FuncAnimation(fig, update, frames=len(Time_range), repeat=True, interval=1000)
+            ani.save(f'{jobid}.gif', writer='pillow', fps=3)
+            
+        else:
+            for year in Time_range:
+                plot_for_year(year)
+                plt.savefig(f'{jobid}_{year}.png', bbox_inches='tight')
+                plt.close(fig)
+            
     else:
         raise ValueError("Invalid plot type. Choose 'line', 'bar', or 'scatter'.")
     
     logging.debug("starting to save results")
     if animate == False:
-        if plot_type == "bar":
+        if plot_type == "bar" or plot_type == "scatter":
             for year in Time_range:
                 filename = f"{jobid}_{year}.png"
                 try:
@@ -268,6 +261,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
                 resdb.hset(jobid,"data",json.dumps(new_data))
             except FileNotFoundError:
                 logging.error(f"File {filename} not found.")
+            
     elif animate == True:
         with open(f'{jobid}.gif', 'rb') as f:
             gif_data = f.read()
