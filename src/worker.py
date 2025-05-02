@@ -109,16 +109,16 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
                     
         cmap = plt.colormaps.get_cmap('Pastel1').resampled(num_locations)
         colors = [mcolors.to_hex(cmap(i)) for i in range(num_locations)]
-        fig, ax = plt.subplots(figsize=(10, 6))
-        bars = ax.bar(Location, val_over_time[0], color=colors)
-        ax.set_ylim(0, max(max(row) for row in val_over_time) * 1.1)
-        ax.set_ylabel(f"{query1}")
-        title = ax.set_title(f"{query1} in {years_int[0]}")
-        
-        texts = [ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f"{(bar.get_height()):,}", 
-                 ha='center', va='bottom', fontsize=9) for bar in bars]
-        
+                
         if animate:
+            fig, ax = plt.subplots(figsize=(10, 6))
+            bars = ax.bar(Location, val_over_time[0], color=colors)
+            ax.set_ylim(0, max(max(row) for row in val_over_time) * 1.1)
+            ax.set_ylabel(f"{query1}")
+            title = ax.set_title(f"{query1} in {years_int[0]}")
+            texts = [ax.text(bar.get_x() + bar.get_width()/2, bar.get_height(), f"{(bar.get_height()):,}", 
+                 ha='center', va='bottom', fontsize=9) for bar in bars]
+            
             def update(frame):
                 year = years_int[frame]
                 title.set_text(f"{query1} in {year}")
@@ -128,10 +128,26 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
                     text.set_text(f"{(height):,}")
                     
             ani = animation.FuncAnimation(fig, update, frames=len(years_int), repeat=True, interval=1000)
-            ani.show()
+            ani.save(f'{jobid}.gif', writer='pillow', fps=3)
+            
+            
         
         else:
-            plt.show()
+            for i, year in enumerate(Time_range):
+                fig, ax = plt.subplots(figsize=(10, 6))
+                bars = ax.bar(Location, val_over_time[i], color=colors)
+                ax.set_ylim(0, max(max(row) for row in val_over_time) * 1.1)
+                ax.set_ylabel(f"{query1}")
+                title = ax.set_title(f"{query1} in {year}")
+                
+                for bar in bars:
+                    height = bar.get_height()
+                    ax.text(bar.get_x() + bar.get_width()/2, height, f"{(height):,}", 
+                            ha='center', va='bottom', fontsize=9)
+                plt.tight_layout()
+                plt.savefig(f'{jobid}_{year}.png', bbox_inches='tight')
+                plt.close(fig)
+            
             
     elif plot_type == "scatter":
         if not animate:
@@ -229,12 +245,35 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
         raise ValueError("Invalid plot type. Choose 'line', 'bar', or 'scatter'.")
     
     logging.debug("starting to save results")
-    with open(f'{jobid}.png', 'rb') as f:
-        image_data = f.read()
-    logging.debug("successfully opened image")
-    resdb.hset(jobid, 'image', image_data)
-    logging.debug("successfully saved image to redis")
-    resdb.hset(jobid,"data",json.dumps(new_data))
+    if not animate:
+        if plot_type == "bar":
+            for year in Time_range:
+                filename = f"{jobid}_{year}.png"
+                try:
+                    with open(filename, 'rb') as f:
+                        image_data = f.read()
+                    logging.debug("successfully opened image")
+                    resdb.hset(jobid, f'image_{year}', image_data)
+                    logging.debug(f"Saved image_{year} to Redis for job {jobid}")
+                    resdb.hset(jobid,"data",json.dumps(new_data))
+                except FileNotFoundError:
+                    logging.error(f"File {filename} not found.")
+        elif plot_type == "line":
+            filename = f"{jobid}.png"
+            try:
+                with open(filename, 'rb') as f:
+                    image_data = f.read()
+                logging.debug("successfully opened image")
+                resdb.hset(jobid, "image", image_data)
+                resdb.hset(jobid,"data",json.dumps(new_data))
+            except FileNotFoundError:
+                logging.error(f"File {filename} not found.")
+    else:
+        with open(f'{jobid}.gif', 'rb') as f:
+            gif_data = f.read()
+        resdb.hset(jobid, "gif", gif_data)
+        logging.debug("successfully saved gif to Redis")
+        
 
 @q.worker
 def update(jobid: str): 
