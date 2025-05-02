@@ -1,0 +1,25 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prod-deployment-worker
+  labels:
+    app: test-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: test-worker
+  template:
+    metadata:
+      labels:
+        app: test-worker
+    spec:
+      containers:
+        - name: test-worker-container
+          imagePullPolicy: Always
+          image: rguarneros065/flask-worldpop_api:1.0 
+          command: ["python", "/app/worker.py"]
+          env:
+            - name: REDIS_HOST
+              value: "test-redis-service"

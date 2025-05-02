@@ -1,0 +1,29 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prod-deployment-redis
+  labels:
+    app: prod-deployment-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prod-deployment-redis
+  template:
+    metadata:
+      labels:
+        app: prod-deployment-redis
+    spec:
+      containers:
+        - name: prod-deployment-redis
+          image: redis
+          ports:
+            - containerPort: 6379
+          volumeMounts:
+            - mountPath: /data
+              name: redis-storage
+      volumes:
+        - name: redis-storage
+          persistentVolumeClaim:
+            claimName: prod-pvc-redis
