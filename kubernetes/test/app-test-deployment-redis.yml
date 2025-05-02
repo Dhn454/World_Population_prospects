@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: test-deployment-redis
-          image: redis:7.2
+          image: redis
           ports:
             - containerPort: 6379
           volumeMounts:

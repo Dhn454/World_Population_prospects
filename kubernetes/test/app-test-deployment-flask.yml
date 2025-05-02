@@ -18,8 +18,8 @@ spec:
       containers:
         - name: test-app-container
           imagePullPolicy: Always
-          image: ubuntu:22.04
-          command: ["python3", "/app/app.py"]
-          volumeMounts:
-            - name: app-code
-              mountPath: /app
+          image: rguarneros065/flask-worldpop_api:1.0 
+          command: ["python", "/app/api.py"]
+          env:
+            - name: REDIS_HOST
+              value: "test-redis-service"
