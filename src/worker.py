@@ -57,12 +57,13 @@ def manipulate_data(job_data):
         new_data[year][location].append(entry)
     return {year: dict(locations) for year, locations in new_data.items()}
 
-def plot_data(new_data, jobid, start_year, end_year, plot_type='line', Location='World', query1=None, query2=None, animate=False):
+def plot_data(new_data, jobid, start_year, end_year, plot_type='line', Location='World', query1='TPopulationJan1', query2=None, animate=False):
     """
     """
     Location = Location or 'World'
     plot_type = plot_type or 'line'
     animate = animate or False
+    query1 = query1 or 'TPopulationJan1'
 
     Time_range = [str(year) for year in range(start_year, end_year + 1)]
     logging.debug(f'Time_range is of type: {type(Time_range)}')
