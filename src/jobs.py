@@ -114,12 +114,12 @@ def get_results(jid) -> dict:
         logging.warning(f"Results request failed: {job_dict['error']}")
         return {"error": f"Job ID '{jid}' not found."}
 
-    if job_dict['status'] == 'complete':
+    if job_dict['status'] == 'complete' or job_dict['status']=='error':
         try:
-            result = resdb.get(jid)
+            result = resdb.hget(jid,'data')
             parsed_result = json.loads(result.decode('utf-8'))
             logging.debug(f"Results for job {jid}: {parsed_result}")
-            return {"job": job_dict, "result": parsed_result}
+            return {"job": job_dict, "result": parsed_result} 
         except Exception as e:
             logging.error(f"Error decoding result for job {jid}: {e}")
             return {"error": "Failed to retrieve job results."}
