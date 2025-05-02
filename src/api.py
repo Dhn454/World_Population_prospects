@@ -9,6 +9,7 @@ import zipfile
 from io import BytesIO
 import json 
 import re 
+import requests
 import os
 import pandas as pd 
 from collections import defaultdict 
