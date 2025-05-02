@@ -16,7 +16,7 @@ from jobs import add_job, get_job_by_id, get_all_jobs, get_results, string_to_bo
 
 _redis_host = os.environ.get("REDIS_HOST") # AI used to understand environment function 
 _redis_port = 6379
-# data_link = "https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz" 
+data_link = "https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz" 
 local_data="cache/WPP2024_Demographic_Indicators_Medium.csv.gz" 
 
 # Redis Database 

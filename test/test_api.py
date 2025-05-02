@@ -1,7 +1,7 @@
 import requests
 import json
 
-BASE_URL = "http://localhost:5000"
+BASE_URL = "http://worldpop.coe332.tacc.cloud"
 
 def test_post_data():
     resp = requests.post(f"{BASE_URL}/data")
@@ -23,7 +23,6 @@ def test_get_years():
     assert all(isinstance(k, str) for k in keys)
 
 def test_get_regions_in_year():
-    # Replace with a valid year and region you know exists after POST
     resp = requests.get(f"{BASE_URL}/years/2023/regions?names=World")
     assert resp.status_code == 200
     result = resp.json()
