@@ -5,7 +5,7 @@ import gzip
 import shutil 
 import logging
 from typing import List, Union 
-from flask import Flask, request 
+from flask import Flask, request, send_file
 from datetime import datetime
 import redis 
 import json 
@@ -22,6 +22,7 @@ local_data="cache/WPP2024_Demographic_Indicators_Medium.csv.gz"
 
 # Redis Database 
 rd=redis.Redis(host=_redis_host, port=_redis_port, db=0) 
+resdb = redis.Redis(host=_redis_host, port=_redis_port, db=3) 
 
 # Starting Flask App 
 app = Flask(__name__) 
@@ -511,6 +512,13 @@ def results(jobid: str) -> Union[dict,tuple]:
     except Exception as e:
         logging.error(f"Error retrieving results for job {jobid}: {e}")
         return {"error": "Internal Server Error"}, 500 
+
+@app.route('/download/<jobid>', methods=['GET'])
+def download(jobid):
+    path = f'/app/{jobid}.png'
+    with open(path, 'wb') as f:
+        f.write(resdb.hget(jobid, 'image'))   # 'resdb' is a client to the results db
+    return send_file(path, mimetype='image/png', as_attachment=True)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
