@@ -9,7 +9,6 @@ import zipfile
 from io import BytesIO
 import json 
 import re 
-import requests
 import os
 import pandas as pd 
 from collections import defaultdict 
@@ -17,7 +16,7 @@ from jobs import add_job, get_job_by_id, get_all_jobs, get_results, string_to_bo
 
 _redis_host = os.environ.get("REDIS_HOST") # AI used to understand environment function 
 _redis_port = 6379
-data_link = "https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz" 
+# data_link = "https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz" 
 local_data="cache/WPP2024_Demographic_Indicators_Medium.csv.gz" 
 
 # Redis Database 
@@ -35,37 +34,30 @@ logging.basicConfig(level=numeric_level,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logging.info("Logging level set to %s", log_level) 
 
-def download_and_extract_gz():
-    gz_path = "data.csv.gz"
-    csv_path = "data.csv"
+def download_and_extract_gz(): # AI helped extract gz file     
+    gz_path = "data.csv.gz" 
+    csv_path = "data.csv" 
 
+    logging.debug(f"gathering data saved locally")
     if os.path.exists(local_data):
         logging.info(f"Using cached .gz file from: {local_data}")
         shutil.copyfile(local_data, gz_path)
     else:
-        try:
-            logging.info(f"Downloading data from: {data_link}")
-            response = requests.get(data_link, stream=True)
-            response.raise_for_status()  # Raise error for bad responses
-            with open(gz_path, 'wb') as f_out:
-                shutil.copyfileobj(response.raw, f_out)
-            logging.info("Download successful.")
-        except Exception as e:
-            logging.error(f"Failed to download data: {e}")
-            raise RuntimeError("No remote or local data available.")
+        logging.error(f"No local cache available at {local_data}")
+        raise RuntimeError("No remote or local data available.")
 
     # Decompress .gz to .csv
     try:
         with gzip.open(gz_path, 'rb') as f_in:
             with open(csv_path, 'wb') as f_out:
                 shutil.copyfileobj(f_in, f_out)
-        logging.info(f"Decompressed .gz to .csv at: {csv_path}")
+        logging.info(f"Decompressed .gz to .csv at: {csv_path}") 
     finally:
         if os.path.exists(gz_path):
             os.remove(gz_path)
             logging.info(f"Removed .gz file: {gz_path}")
 
-    return csv_path
+    return csv_path 
 
 def decode_data(): # AI helped read csv file 
     path = download_and_extract_gz()
