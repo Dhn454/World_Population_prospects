@@ -13,6 +13,22 @@
 9. [Resources](README.md#resources)
 10. [AI Usage](README.md#ai-usage)
 
+## Makefile Commands
+
+| Command             | Description                                                 |
+|---------------------|-------------------------------------------------------------|
+| `make k`            | Apply all Kubernetes configs and show status                |
+| `make k-up`         | Apply Kubernetes manifests only                             |
+| `make k-down`       | Delete Kubernetes resources                                 |
+| `make k-status`     | Check Kubernetes pods, services, and ingress                |
+| `make docker-up`    | Build and start all Docker services (includes data download)|
+| `make docker-down`  | Stop and remove all Docker services                         |
+| `make docker-api`   | Restart only the `flask-app` Docker service (includes data download) |
+| `make docker-worker`| Restart only the `worker` Docker service                    |
+| `make docker-redis` | Restart only the `redis-db` Docker service                  |
+
+
+
 ## Description 
 
 This code features two routes in a containerized Flask API that communicates with a [Redis](https://redis.io) database. The ```api.py``` establishes connection with a redis database and checks if the database is empty. If it is empty or if the data is out of date, it injests the [HGNC Data](https://www.genenames.org/download/archive/) using the requests library and writes it to the redis database as ```key:value``` pairs. You are able to write the entire data set to the redis database, delete the entire data set from redis, and return the data set to the user. There is also a route which returns a JSON-formatted list of all hgnc_id fields as well as the entire dictionary of a specific hgnc_id field. 
