@@ -1,7 +1,5 @@
 import json
 import uuid
-import argparse 
-import socket 
 import redis
 import os 
 from hotqueue import HotQueue 
@@ -34,6 +32,9 @@ def string_to_bool(string):
         else:
             logging.warning("Invalid boolean string, defaulting to false.")
             return False
+    else:
+        logging.warning("Empty string provided, defaulting to false.")
+        return False
 
 def _generate_jid() -> str:
     """
