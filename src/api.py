@@ -1,6 +1,3 @@
-import requests
-import matplotlib.pyplot as plt 
-import argparse
 import gzip
 import shutil 
 import logging
@@ -405,17 +402,17 @@ def get_region_eras(eras:str, region:str) -> List[dict]:
 @app.route('/help', methods=['GET']) 
 def get_help(): 
     return """
-submit a job:
-curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "line"}' -H "Content-Type: application/json"
+submit a job:\n
+curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "line"}' -H "Content-Type: application/json"\n
 
-submit a job with specified regions:
-curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "2023", "plot_type": "bar", "Location": "Asia,Europe,Mexico"}' -H "Content-Type: application/json"
+submit a job with specified regions:\n
+curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "2023", "plot_type": "bar", "Location": "Asia,Europe,Mexico"}' -H "Content-Type: application/json"\n
 
-submit a job with specified data for x and y:
-curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "scatter", "Location": "Asia", "query1": "NRR", "query2": "TFR"}' -H "Content-Type: application/json"
+submit a job with specified data for x and y:\n
+curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "scatter", "Location": "Asia", "query1": "NRR", "query2": "TFR"}' -H "Content-Type: application/json"\n
 
-submit a job with specified animation:
-curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "line", "query1": "NRR", "query2": "TFR", "animation": "True"}' -H "Content-Type: application/json"
+submit a job with specified animation:\n
+curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "line", "query1": "NRR", "query2": "TFR", "animation": "True"}' -H "Content-Type: application/json"\n
 """
 
 
