@@ -531,7 +531,7 @@ def download(jobid):
         with open(path, 'wb') as f:
             f.write(resdb.hget(jobid, 'gif'))   # 'resdb' is a client to the results db
         return send_file(path, mimetype='image/gif', as_attachment=True)
-    elif plot_type == "bar" and not flag:
+    elif plot_type in ["bar", "scatter"] and not flag:
         logging.debug(f'Plot type was bar and animation was false')
         mem_zip = BytesIO()
         logging.debug(f'mem_zip is of type: {type(mem_zip)}')

@@ -151,6 +151,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
             
     elif plot_type == "scatter":
         fig, ax = plt.subplots(figsize=(10, 6))
+        fig.subplots_adjust(right=0.75)
         sc = ax.scatter([], [], alpha=1)
         reg_line, = ax.plot([], [], color='red', lw=2, label='Regression Line')
         title = ax.set_title("")
@@ -216,7 +217,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
 
                 regression_handle = plt.Line2D([0], [0], color='red', lw=2, label=reg_label)
                 all_handles = [regression_handle] + location_handles
-                legend = ax.legend(handles=all_handles, loc='upper left', bbox_to_anchor=(-0.165, 1.165), borderaxespad=0)
+                legend = ax.legend(handles=all_handles, loc='upper right', bbox_to_anchor=(1.4, 1), borderaxespad=0)
                 legend.get_frame().set_facecolor('none')
                 legend.get_frame().set_edgecolor('none')
         
@@ -230,9 +231,54 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
             
         else:
             for year in Time_range:
-                plot_for_year(year)
+                fig, ax = plt.subplots(figsize=(10, 6))  # Move inside loop
+                def plot_for_year_dynamic(ax, year):
+                    ax.set_xlabel(f"{query1}")
+                    ax.set_ylabel(f"{query2}")
+                    ax.set_title(f"{query1} vs {query2} in {year}")
+                    ax.grid(True)
+                    ax.set_xlim(x_lim)
+                    ax.set_ylim(y_lim)
+        
+                    x_vals, y_vals, labels = [], [], []
+                    for loc in Location:
+                        try:
+                            entry = new_data[year][loc][0]
+                            x = float(entry[query1])
+                            y = float(entry[query2])
+                            x_vals.append(x)
+                            y_vals.append(y)
+                            labels.append(loc)
+                        except (KeyError, IndexError, ValueError):
+                            continue
+                        
+                    colors = [loc_to_color[loc] for loc in labels]
+                    ax.scatter(x_vals, y_vals, c=colors, alpha=1)
+        
+                    if len(x_vals) > 1:
+                        X = np.array(x_vals).reshape(-1, 1)
+                        y_arr = np.array(y_vals)
+                        model = LinearRegression().fit(X, y_arr)
+                        r_squared = model.score(X, y_arr)
+                        x_fit = np.linspace(x_lim[0], x_lim[1], 100).reshape(-1, 1)
+                        y_fit = model.predict(x_fit)
+                        reg_label = f"Regression Line (R²={r_squared:.2f})"
+                        ax.plot(x_fit, y_fit, color='red', lw=2, label=reg_label)
+        
+                        location_handles = [plt.Line2D([0], [0], marker='o', linestyle='', color=loc_to_color[loc],
+                                                       label=loc, markersize=7) for loc in unique_locations]
+                        regression_handle = plt.Line2D([0], [0], color='red', lw=2, label=reg_label)
+                        all_handles = [regression_handle] + location_handles
+                        legend = ax.legend(handles=all_handles, loc='upper right', bbox_to_anchor=(1.3, 1), borderaxespad=0)
+                        legend.get_frame().set_facecolor('none')
+                        legend.get_frame().set_edgecolor('none')
+                        for text in legend.get_texts():
+                            text.set_ha("right")
+        
+                plot_for_year_dynamic(ax, year)
                 plt.savefig(f'{jobid}_{year}.png', bbox_inches='tight')
                 plt.close(fig)
+
             
     else:
         raise ValueError("Invalid plot type. Choose 'line', 'bar', or 'scatter'.")
