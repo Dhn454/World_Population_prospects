@@ -2,19 +2,19 @@
 kind: Ingress
 apiVersion: networking.k8s.io/v1
 metadata:
-  name: test-ingress-flask
+  name: prod-ingress-flask
   annotations:
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   ingressClassName: nginx
   rules:
-  - host: "guarneros-test-worldpop.coe332.tacc.cloud"
+  - host: "guarneros-prod-worldpop.coe332.tacc.cloud"
     http:
         paths:
         - pathType: Prefix
           path: "/"
           backend:
             service:
-              name: test-flask-nodeport-service
+              name: prod-flask-nodeport-service
               port:
                   number: 5000

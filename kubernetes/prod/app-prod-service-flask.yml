@@ -2,12 +2,12 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: test-flask-service
+  name: prod-flask-service
   labels:
-    app: test-flask-app
+    app: prod-flask-app
 spec:
   selector:
-    app: test-flask-app
+    app: prod-flask-app
   ports:
     - port: 5000       # the port other pods will use to talk to Flask
       targetPort: 5000 # the port the Flask app listens on in the container
