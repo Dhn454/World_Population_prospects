@@ -24,6 +24,7 @@ local_data="cache/WPP2024_Demographic_Indicators_Medium.csv.gz"
 
 # Redis Database 
 rd=redis.Redis(host=_redis_host, port=_redis_port, db=0) 
+jdb = redis.Redis(host=_redis_host, port=_redis_port, db=2) 
 resdb = redis.Redis(host=_redis_host, port=_redis_port, db=3) 
 
 # Starting Flask App 
@@ -418,7 +419,7 @@ curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type
 """
 
 
-@app.route('/jobs', methods=['GET', 'POST']) 
+@app.route('/jobs', methods=['GET', 'POST', 'DELETE']) 
 def get_jobs() -> Union[list, str]: 
     if request.method == 'POST': 
         try: 
@@ -447,6 +448,12 @@ def get_jobs() -> Union[list, str]:
         except Exception as e:
             logging.error(f"Error retrieving jobs: {e}")
             return jsonify({"error": "Internal Server Error"}), 500
+    
+    elif request.method == 'DELETE':
+        for item in jdb.keys(): 
+            jdb.delete(item) 
+        logging.debug('Deleted all jobs from Redis database')
+        return 'Deleted all jobs from Redis database\n' 
 
     logging.warning(f"Method {request.method} not allowed on /jobs")
     return jsonify({"error": f"Method {request.method} Not Allowed."}), 405
@@ -476,7 +483,8 @@ def get_job(jobid: str) -> Union[dict,tuple]:
         logging.error(f"Error fetching job {jobid}: {e}")
         return {"error": "Internal Server Error"}, 500      
 
-@app.route('/results/<jobid>', methods=['GET']) 
+@app.route('/results', defaults={'jobid': None}, methods=['GET', 'DELETE']) # able to delete all results from database
+@app.route('/results/<jobid>', methods=['GET', 'DELETE']) 
 def results(jobid: str) -> Union[dict,tuple]: 
     """
     This route uses the GET method to retrieve the result of a given job ID
@@ -491,13 +499,22 @@ def results(jobid: str) -> Union[dict,tuple]:
         tuple: A tuple with an error dictionary and HTTP status code 500
                if an exception occurs.
     """
-    try:
-        data = get_results(jobid)
-        logging.debug(f"Results fetched: {data}")
-        return data  
-    except Exception as e:
-        logging.error(f"Error retrieving results for job {jobid}: {e}")
-        return {"error": "Internal Server Error"}, 500 
+    if request.method == 'GET':
+        try:
+            data = get_results(jobid)
+            logging.debug(f"Results fetched: {data}")
+            return data  
+        except Exception as e:
+            logging.error(f"Error retrieving results for job {jobid}: {e}")
+            return {"error": "Internal Server Error"}, 500 
+    elif request.method == "DELETE":
+        for item in resdb.keys(): 
+            resdb.delete(item) 
+        logging.debug('Deleted all results from Redis database')
+        return 'Deleted all results from Redis database\n' 
+
+    logging.warning(f"Method {request.method} not allowed on /jobs")
+    return jsonify({"error": f"Method {request.method} Not Allowed."}), 405
 
 @app.route('/download/<jobid>', methods=['GET'])
 def download(jobid):
