@@ -8,6 +8,8 @@ from typing import List, Union
 from flask import Flask, request, jsonify, send_file 
 from datetime import datetime
 import redis 
+import zipfile
+from io import BytesIO
 import json 
 import re 
 import os
@@ -501,15 +503,45 @@ def results(jobid: str) -> Union[dict,tuple]:
 def download(jobid):
     job_dict = get_job_by_id(jobid)
     flag = string_to_bool(job_dict.get("animate"))
+    plot_type = job_dict.get("plot_type")
     logging.debug(f'job_dict is {job_dict}')
     logging.debug(f'job_dict animate option is {job_dict.get("animate")}')
     logging.debug(f'flag is {flag}')
+
     if flag: 
-        logging.debug(f'We are in!!')
+        logging.debug(f'animation was true')
         path = f'/app/{jobid}.gif'
         with open(path, 'wb') as f:
             f.write(resdb.hget(jobid, 'gif'))   # 'resdb' is a client to the results db
         return send_file(path, mimetype='image/gif', as_attachment=True)
+    elif plot_type == "bar" and not flag:
+        logging.debug(f'Plot type was bar and animation was false')
+        mem_zip = BytesIO()
+        logging.debug(f'mem_zip is of type: {type(mem_zip)}')
+
+        # Creating a ZipFile in memory
+        with zipfile.ZipFile(mem_zip, 'w') as zipf:
+            logging.debug(f'Preparing zip file')
+            logging.debug(f'Keys for the {jobid} jobid are {resdb.hkeys(jobid)}')
+            logging.debug(f'Keys in results database are {resdb.keys()}')
+
+            # Loop through Redis keys to find image data
+            for key in resdb.hkeys(jobid):
+                logging.debug(f'Found key: {key}')
+                if key.startswith(b'image_'):  # e.g., image_2020
+                    logging.debug(f"Key '{key}' starts with image_")
+                    year = key.decode().split('_')[1]
+                    data = resdb.hget(jobid, key)  # Get the binary data from Redis
+                    # Writing the image data to the zip file
+                    zipf.writestr(f"{jobid}_{year}.png", data)
+                    logging.debug(f"Added {jobid}_{year}.png to zip")
+
+        # Seek to the beginning of the in-memory ZIP file before sending it
+        mem_zip.seek(0)
+
+        # Returning the ZIP file as a downloadable response
+        return send_file(mem_zip, mimetype='application/zip', as_attachment=True, download_name=f'{jobid}_images.zip')
+
     else: 
         path = f'/app/{jobid}.png'
         with open(path, 'wb') as f:

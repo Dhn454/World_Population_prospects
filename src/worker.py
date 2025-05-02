@@ -46,7 +46,6 @@ def manipulate_data(job_data):
     # raw_data = raw_data.json() 
     new_data = defaultdict(lambda: defaultdict(list))
     logging.debug(f"Type of raw_data: {type(raw_data)}")
-    logging.debug(f"raw_data: {raw_data}")
     logging.debug(f'Parameters: {start}-{end}, {regions}')
     for entry in raw_data:
         if not entry["Time"]:
@@ -62,6 +61,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
     """
     """
     Location = Location or []
+    animate = animate or False
 
     Time_range = [str(year) for year in range(start_year, end_year + 1)]
     logging.debug(f'Time_range is of type: {type(Time_range)}')
@@ -245,6 +245,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
         raise ValueError("Invalid plot type. Choose 'line', 'bar', or 'scatter'.")
     
     logging.debug("starting to save results")
+    logging.debug(f'animate option is {animate}')
     if animate == False:
         if plot_type == "bar":
             for year in Time_range:
