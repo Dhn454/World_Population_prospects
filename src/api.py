@@ -498,7 +498,26 @@ def get_job(jobid: str) -> Union[dict,tuple]:
     logging.warning(f"Method {request.method} not allowed on /jobs")
     return jsonify({"error": f"Method {request.method} Not Allowed."}), 405    
 
-@app.route('/results', defaults={'jobid': None}, methods=['GET', 'DELETE']) # able to delete all results from database
+@app.route('/results', methods=['GET', 'DELETE']) # able to delete all results from database
+def results_all(): 
+    if request.method == 'GET':
+        try:
+            keys = resdb.keys()
+            keys = [key.decode('utf-8') for key in keys]
+            logging.debug(f"Retrieved all job IDs: {keys}")
+            return keys 
+        except Exception as e:
+            logging.error(f"Error fetching job keys: {e}")
+            return []
+    elif request.method == "DELETE":
+        for item in resdb.keys(): 
+            resdb.delete(item) 
+        logging.debug('Deleted all results from Redis database')
+        return 'Deleted all results from Redis database\n' 
+
+    logging.warning(f"Method {request.method} not allowed on /jobs")
+    return jsonify({"error": f"Method {request.method} Not Allowed."}), 405
+
 @app.route('/results/<jobid>', methods=['GET', 'DELETE']) 
 def results(jobid: str) -> Union[dict,tuple]: 
     """
@@ -523,10 +542,9 @@ def results(jobid: str) -> Union[dict,tuple]:
             logging.error(f"Error retrieving results for job {jobid}: {e}")
             return {"error": "Internal Server Error"}, 500 
     elif request.method == "DELETE":
-        for item in resdb.keys(): 
-            resdb.delete(item) 
-        logging.debug('Deleted all results from Redis database')
-        return 'Deleted all results from Redis database\n' 
+        resdb.delete(jobid) 
+        logging.debug(f'Deleted {jobid} results from Redis database')
+        return f'Deleted {jobid} results from Redis database\n' 
 
     logging.warning(f"Method {request.method} not allowed on /jobs")
     return jsonify({"error": f"Method {request.method} Not Allowed."}), 405
