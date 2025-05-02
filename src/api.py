@@ -436,9 +436,6 @@ def get_jobs() -> Union[list, str]:
             if not data.get("start") or not data.get("end"):
                 logging.error("Missing start or end date.")
                 return jsonify({"error": "Please provide both start and end dates."}), 400  
-            if not data.get("plot_type"):
-                logging.error("Missing plot_type.")
-                return jsonify({"error": "Please provide a plot type option."}), 400 
 
             job_info = add_job(data)
             logging.info(f"Job created: {job_info}")
