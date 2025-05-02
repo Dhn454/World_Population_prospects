@@ -5,7 +5,7 @@ import gzip
 import shutil 
 import logging
 from typing import List, Union 
-from flask import Flask, request, send_file
+from flask import Flask, request, jsonify, send_file 
 from datetime import datetime
 import redis 
 import json 
@@ -416,55 +416,39 @@ curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type
 """
 
 
-@app.route('/jobs', methods=['GET','POST']) 
+@app.route('/jobs', methods=['GET', 'POST']) 
 def get_jobs() -> Union[list, str]: 
-    """
-    This route uses the GET method to retrieve all the job ids from  
-    the Redis database. It also uses the POST method to create a new 
-    job in the queue depending on the parameters provided. 
-
-    Args: 
-        NONE 
-
-    Returns: 
-        result (str): Returns a string specifying that a job was created 
-                      and the information, including the ID, of that job. 
-                      This is when using the POST method. 
-        OR 
-        result (list): Returns a list of strings of all the job ids 
-                       when using the GET method. 
-    """ 
     if request.method == 'POST': 
         try: 
             data = request.get_json()
-            logging.debug(f"POST data received")
+            logging.debug("POST data received: %s", data)
 
-            years = [key.decode('utf-8') for key in rd.keys()]
-            if not years:
-                return {"Database empty!"}
-            if data.get("start") not in years and data.get("end") not in years: 
-                logging.error("Start and end dates were empty.") 
-                return {"error": "Please provide a start and end date."}, 400  
+            if not data.get("start") or not data.get("end"):
+                logging.error("Missing start or end date.")
+                return jsonify({"error": "Please provide both start and end dates."}), 400  
             if not data.get("plot_type"):
-                logging.error("Could not create job. Missing parameters.")
-                return {"error": "Please provide a plot type option."}, 400 
-            job_info = add_job(data) 
-            logging.info(f"Job created successfully: {job_info}")
-            return f'Job created: {job_info}\n' 
+                logging.error("Missing plot_type.")
+                return jsonify({"error": "Please provide a plot type option."}), 400 
+
+            job_info = add_job(data)
+            logging.info(f"Job created: {job_info}")
+            return jsonify({"message": "Job created", "job": job_info}), 201
         except Exception as e: 
             logging.error(f"Error creating job: {e}")
-            return {"error": "Internal Server Error"}, 500 
+            return jsonify({"error": "Internal Server Error"}), 500 
+
     elif request.method == 'GET': 
-        logging.debug("Retrieved all job IDs")
         try: 
             jobs = get_all_jobs()
-            return jobs
+            logging.debug("Retrieved all job IDs")
+            return jsonify(jobs), 200
         except Exception as e:
             logging.error(f"Error retrieving jobs: {e}")
-            return {"error": "Internal Server Error"}, 500
+            return jsonify({"error": "Internal Server Error"}), 500
 
     logging.warning(f"Method {request.method} not allowed on /jobs")
-    return {"error": f"Method Not Allowed."}, 405 
+    return jsonify({"error": f"Method {request.method} Not Allowed."}), 405
+
 
 @app.route('/jobs/<jobid>', methods=['GET']) 
 def get_job(jobid: str) -> Union[dict,tuple]: 

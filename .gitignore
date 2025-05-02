@@ -1,0 +1,8 @@
+# Ignore all .rdb files
+*.rdb
+
+# Ignore all .png files
+*.png
+
+# Ignore all .gz files
+*.gz
