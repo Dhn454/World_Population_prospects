@@ -8,7 +8,7 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: "guarneros-prod-worldpop.coe332.tacc.cloud"
+  - host: "guarneros-worldpop.coe332.tacc.cloud"
     http:
         paths:
         - pathType: Prefix
