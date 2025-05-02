@@ -31,6 +31,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.info("Logging level set to %s", log_level)
 
+def string_to_bool(string):
+    if string.lower() == "true":
+        return True
+    elif string.lower() == "false":
+        return False
+    else:
+        raise ValueError("Invalid boolean string")
+
 def manipulate_data(job_data):
     """This funciton converts the list of dictionaries into a single dictionary of dictionaries
     
@@ -110,7 +118,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
         cmap = plt.colormaps.get_cmap('Pastel1').resampled(num_locations)
         colors = [mcolors.to_hex(cmap(i)) for i in range(num_locations)]
                 
-        if animate:
+        if animate ==True:
             fig, ax = plt.subplots(figsize=(10, 6))
             bars = ax.bar(Location, val_over_time[0], color=colors)
             ax.set_ylim(0, max(max(row) for row in val_over_time) * 1.1)
@@ -132,7 +140,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
             
             
         
-        else:
+        elif animate == False:
             for i, year in enumerate(Time_range):
                 fig, ax = plt.subplots(figsize=(10, 6))
                 bars = ax.bar(Location, val_over_time[i], color=colors)
@@ -245,7 +253,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
         raise ValueError("Invalid plot type. Choose 'line', 'bar', or 'scatter'.")
     
     logging.debug("starting to save results")
-    if not animate:
+    if animate == False:
         if plot_type == "bar":
             for year in Time_range:
                 filename = f"{jobid}_{year}.png"
@@ -268,7 +276,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
                 resdb.hset(jobid,"data",json.dumps(new_data))
             except FileNotFoundError:
                 logging.error(f"File {filename} not found.")
-    else:
+    elif animate == True:
         with open(f'{jobid}.gif', 'rb') as f:
             gif_data = f.read()
         resdb.hset(jobid, "gif", gif_data)
@@ -297,7 +305,7 @@ def update(jobid: str):
         regions = region_names.split(",") if region_names else []
 
         plot_data(new_data, jobid, int(job_dict["start"]), int(job_dict["end"]), job_dict["plot_type"], 
-                  regions, job_dict.get("query1"), job_dict.get("query2"), job_dict.get("animate"))
+                  regions, job_dict.get("query1"), job_dict.get("query2"), string_to_bool(job_dict.get("animate")))
 
         update_job_status(jobid, 'complete') 
     except Exception as e:

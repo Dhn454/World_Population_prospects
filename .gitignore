@@ -6,3 +6,6 @@
 
 # Ignore all .gz files
 *.gz
+
+#ignore all .gif files
+*.gif
