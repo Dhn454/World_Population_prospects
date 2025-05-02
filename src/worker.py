@@ -4,14 +4,13 @@ import logging
 from hotqueue import HotQueue 
 from jobs import update_job_status, get_job_by_id
 from api import get_year 
-import time
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import numpy as np
 from collections import defaultdict
-import requests
+import json 
 from sklearn.linear_model import LinearRegression
 
 _redis_port=6379 
@@ -48,7 +47,6 @@ def manipulate_data(job_data):
     new_data = defaultdict(lambda: defaultdict(list))
     logging.debug(f"Type of raw_data: {type(raw_data)}")
     logging.debug(f'Parameters: {start}-{end}, {regions}')
-    logging.debug(f"raw_data: {raw_data}")
     for entry in raw_data:
         year = entry["Time"]
         location = entry["Location"]
@@ -61,14 +59,20 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
     Location = Location or []
 
     Time_range = [str(year) for year in range(start_year, end_year + 1)]
+    logging.debug(f'Time_range is of type: {type(Time_range)}')
+    logging.debug(f'Time_range has data: {Time_range}')
     years_int = [int(y) for y in Time_range]
     num_locations = len(Location) if Location else 0
     
     if Location: Location.sort()
     
+    logging.debug("parameters are good to go")
+
     if plot_type == "line":
+        logging.debug("starting for loop for locations")
         for location in Location:
             values = []
+            logging.debug("starting for loop for locations")
             for year in Time_range:
                 try:
                     entry = new_data[year][location][0]
@@ -218,9 +222,13 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type, Location=None, q
     else:
         raise ValueError("Invalid plot type. Choose 'line', 'bar', or 'scatter'.")
     
+    logging.debug("starting to save results")
     with open(f'{jobid}.png', 'rb') as f:
         image_data = f.read()
+    logging.debug("successfully opened image")
     resdb.hset(jobid, 'image', image_data)
+    logging.debug("successfully saved image to redis")
+    resdb.hset(jobid,"data",json.dumps(new_data))
 
 @q.worker
 def update(jobid: str): 
@@ -239,7 +247,6 @@ def update(jobid: str):
         new_data = manipulate_data(job_dict) 
         logging.debug(f'new_data is of type: {type(new_data)}')
         logging.debug(f'new_data dictionaries: {new_data.keys()}')
-        logging.debug(f'new_data: {new_data}')
 
         plot_data(new_data, jobid, int(job_dict["start"]), int(job_dict["end"]), job_dict["plot_type"], 
                   job_dict.get("Location"), job_dict.get("query1"), job_dict.get("query2"), job_dict.get("animate"))
