@@ -176,66 +176,30 @@ Check which directory you are currently on by running
 pwd
 ```
 
-You should see you are in homework08 such as: 
+You should see you are in repo's folder such as: 
 ``` bash
-/home/guarneros/coe332-hw-guarneros/homework08 
+/home/ubuntu/Earth-In-Numbers
 ```
-If not change to homework08 folder by: 
+If not change to the repo's folder by: 
 ``` bash
-cd homework08/
+cd Earth-In-Numbers
 ```
 
-### Configure docker-compose.yml file
-Now we can proceed to configuring our docker-compose.yml file. 
-As you may have noticed, you have a [docker-compose.yml](docker-compose.yml) file. You will have to modify this to be able to run docker compose. 
+### Installing Dependencies
 
-Using your favorite text editor (i.e vim, emacs, nano, etc), open this file and change 'rguarneros065' to your docker username. 
+This repo uses docker compose to orchestrate the containers, so please go ahead and install [Docker](https://docs.docker.com/engine/install/) and [docker compose](https://docs.docker.com/compose/install/)
 
-```bash
-# Example
-vim docker-compose.yml 
+In order to get full compatibility when receiving results you need to install new packages as follows: 
 
-# Output
----
-version: "3"
-
-services:
-    redis-db:
-        image: redis:7 
-        ports:
-            - 6379:6379
-        volumes:
-            - ./data:/data 
-        user: "1000:1000"
-        command: ["--save", "1", "1"]
-    flask-app:
-        build:
-            context: ./ 
-            dockerfile: ./Dockerfile
-        depends_on:
-            - redis-db
-        image: rguarneros065/flask-redis-gene_api:1.0 
-        ports:
-            - 5000:5000
-        command: [api.py] # AI used to run the api 
-        environment: # AI used to add environment 
-        - REDIS_HOST=redis-db
-        - LOG_LEVEL=WARNING
-    worker: 
-        build: 
-            context: ./ 
-            dockerfile: ./Dockerfile
-        depends_on: 
-            - redis-db
-        image: rguarneros065/flask-redis-gene_api:1.0   
-        command: [worker.py] 
-        environment: 
-        - REDIS_HOST=redis-db
-        - LOG_LEVEL=WARNING
+```bash 
+sudo apt update
+sudo apt upgrade 
+sudo apt install unzip make
 ```
-Please make sure to change 'rguarneros065' to your actual docker username. 
 
-Also note that you have a loglevel environment variable that you can change. You will have to exec into the docker container to see these logs. 
+_Note: In order to host your own Kubernetes pods, you will need to install and configure Kubernetes on your own._
+
+After installing these dependencies, we are able to host the docker containers and also access the kubernetes hosted API.  
 
 ### Installing packages for pytest 
 You will also need to install a pytest plugin to be able to run the test scripts. To do that please do the following: 
