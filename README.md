@@ -724,15 +724,15 @@ pytest
 # Example Output
 =================================================== test session starts ====================================================
 platform linux -- Python 3.12.3, pytest-8.3.4, pluggy-1.5.0
-rootdir: /home/ubuntu/coe332-hw-guarneros/homework08/src/test
-plugins: mock-3.14.0
-collecting 10 items                                                                                                        ^collected 24 items                                                                                                         
+rootdir: /home/ubuntu/Earth-In-Numbers
+collected 20              
+
 
 test_api.py ..........                                                                                               [ 41%]
 test_jobs.py .............                                                                                           [ 95%]
 test_worker.py .                                                                                                     [100%]
 
-==================================================== 24 passed in 9.63s ====================================================
+==================================================== 20 passed in 9.63s ====================================================
 ```
 You have successfully ran the test scripts and all test scripts have passed. You are welcome to look into the test scripts and which cases were tested by looking into each test script in this folder. 
 
