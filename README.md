@@ -709,7 +709,9 @@ This route will download the images or GIF of the jobid entered. If the job was 
 # Example
  curl localhost:5000/download/21f01f38-26e7-4763-b719-6c70c224f80d --output data.gif
 ```
+Notice the end of the call. This allows you to name the file and dictate where it will be saved. In this example it will be named "data.gif and will be downloaded into the current working directory. 
 
+![example gif](data.gif)
 ## Running Test Scripts 
 To run the test scripts you will have to go to the test folder inside the src folder to access these scripts. To do so please do the following: 
 ```bash
