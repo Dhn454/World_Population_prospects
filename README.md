@@ -1,13 +1,14 @@
-# Earth In Numbers 
+# Earth In Numbers: Analyzing World Population Trends from 1950-2023 
 
 ## Table of Contents
 1. [Description: World Population Flask API with Redis Integration](README.md#description-world-population-flask-api-with-redis-integration) 
 2. [Software Diagram](README.md#software-diagram)
 2. [World Population Prospects Data Set](README.md#world-population-prospects-data-set)
 2. [Getting Started](README.md#getting-started)
-3. [Building the Container](README.md#building-the-container)
-4. [Running Docker Container](README.md#running-containerized-scripts)
-5. [Accessing Microservice](README.md#accessing-microservice)
+3. [Makefile Command](README.md#makefile-command)
+3. [Building/Running the Containers](README.md#buildingrunning-the-containers)
+5. [Kubernetes Orchestration](README.md#kubernetes-orchestration)
+5. [Accessing API](README.md#accessing-api)
 6. [Running Test Scripts](README.md#running-test-scripts)
 5. [Clean Up](README.md#clean-up)
 9. [Resources](README.md#resources)
@@ -103,7 +104,7 @@ The user is also able to access the same routes and services through Kubernetes 
 
 Our API also features a queue methodology where each posted job will be added to the queue as a first come first serve. Each job once finished will be taken off the queue and the user will be able to see the results with the GET results route as well as download a png/gif to your local hardrive as illustrated in the diagram above. 
 
-## HUGO Gene Nomenclature Committee (HGNC) Data Set
+## World Population Prospects Data Set
 
 The World Population Prospects 2024 is a comprehensive dataset compiled by the United Nations, offering detailed estimates and projections of population trends from 1950 to 2100 for 237 countries and regions. It draws from nearly two thousand national censuses and thousands of surveys, providing insights into demographic indicators such as population size, growth, birth and death rates, and life expectancy. This dataset is essential for understanding long-term global and regional population dynamics and is widely used for policy planning, economic forecasting, and development research. In our application, we use a compressed CSV file containing medium-variant projections to serve demographic data efficiently through a Redis-backed Flask API. 
 
@@ -743,12 +744,12 @@ Don't forget to stop your running containers and remove them when you are done. 
 docker compose down 
 
 # Output
-WARN[0000] /home/ubuntu/coe332-hw-guarneros/homework08/docker-compose.yml: `version` is obsolete 
+WARN[0000] /home/ubuntu/Earth-In-Numbers/docker-compose.yml: `version` is obsolete 
 [+] Running 4/4
- ✔ Container homework08-worker-1     Removed                                                                  10.2s 
- ✔ Container homework08-flask-app-1  Removed                                                                   0.4s 
- ✔ Container homework08-redis-db-1   Removed                                                                   0.4s 
- ✔ Network homework08_default        Removed                                                                   0.1s 
+ ✔ Container earth-in-numbers-worker-1     Removed                                                                                               10.3s 
+ ✔ Container earth-in-numbers-flask-app-1  Removed                                                                                                0.6s 
+ ✔ Container earth-in-numbers-redis-db-1   Removed                                                                                                1.5s 
+ ✔ Network earth-in-numbers_default        Removed                                                                                                0.1s 
 ```
 
 You can double check that you successfully exited and removed the running container by running ```docker ps -a```. You should see that all the containers for this project are gone. 
@@ -757,15 +758,21 @@ You can double check that you successfully exited and removed the running contai
 * Matrix Conversion: https://www.geeksforgeeks.org/how-to-convert-pandas-dataframe-into-a-list/
 * Logging Documentation: https://docs.python.org/3/howto/logging.html 
 * Requests Library: https://pypi.org/project/requests/ 
-* HGNC Data: https://www.genenames.org/download/archive/
+* World Population Data: https://population.un.org/wpp/downloads?folder=Standard%20Projections&group=CSV%20format 
 * COE 332 Spring 2025 Docs: https://coe-332-sp25.readthedocs.io/en/latest/ 
 * Table Syntax for README: https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/organizing-information-with-tables 
 * _.keys()_ function: https://www.w3schools.com/python/ref_dictionary_items.asp 
 * Error Codes: https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status 
 * _update()_ method: https://www.w3schools.com/python/ref_set_update.asp 
 * _uuid_ module: https://docs.python.org/3/library/uuid.html 
-* _datetime_ module: https://docs.python.org/3/library/datetime.html 
 * _append()_ module: https://www.w3schools.com/python/ref_list_append.asp 
 * Counter python module function: https://docs.python.org/3/library/collections.html#collections.Counter 
+* fakeredis package: https://pypi.org/project/fakeredis/ 
+* matplotlib: https://matplotlib.org 
 
 ## AI Usage
+AI (ChatGPT) was used for creating test cases for all of the src files. It was also used for debugging kubernetes related errors for orchestrating all the pods together. 
+
+AI was also used for creating a gif and saving it to the redis database. 
+
+The sections where AI was used are commented appropriately in the code. 
