@@ -65,7 +65,7 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type='line', Location=
     if query1 is None:
         query1 = 'TPopulation1Jan'
     
-    if query2 is not None and query1 is None:
+    if query2 is not None and query1 is 'TPopulation1Jan':
         query1 = query2
         query2 = None
     
