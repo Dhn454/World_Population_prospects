@@ -32,12 +32,9 @@ logger = logging.getLogger(__name__)
 logger.info("Logging level set to %s", log_level)
 
 def manipulate_data(job_data):
-    """This funciton converts the list of dictionaries into a single dictionary of dictionaries
-    
-
-    Args:
-        data (_type_): _description_
-
+    """
+    This function takes the job data and manipulates it to create a new data structure.
+    It organizes the data by year and location.
     """
     start = job_data.get('start')
     end = job_data.get('end') 
@@ -61,6 +58,7 @@ def manipulate_data(job_data):
 
 def plot_data(new_data, jobid, start_year, end_year, plot_type='line', Location=None, query1='TPopulation1Jan', query2=None, animate=False):
     """
+    This function takes the data and creates a plot based on the specified parameters.
     """
     if query1 is None:
         query1 = 'TPopulation1Jan'
@@ -337,7 +335,6 @@ def plot_data(new_data, jobid, start_year, end_year, plot_type='line', Location=
 
 @q.worker
 def update(jobid: str): 
-
     logging.info(f"Started processing job: {jobid}")
     try:
         update_job_status(jobid, 'in progress')

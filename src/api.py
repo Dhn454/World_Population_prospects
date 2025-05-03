@@ -36,6 +36,10 @@ logging.basicConfig(level=numeric_level,
 logging.info("Logging level set to %s", log_level) 
 
 def download_and_extract_gz():
+    """
+    downloads the .gz file from the remote server and extracts it to a .csv file.
+    If the .gz file is already present locally, it uses that instead of downloading.
+    """
     gz_path = "data.csv.gz"
     csv_path = "data.csv"
 
@@ -68,6 +72,9 @@ def download_and_extract_gz():
     return csv_path
 
 def decode_data(): # AI helped read csv file 
+    """
+    Decodes the data from the csv file and returns a dictionary with the data grouped by year.
+    """
     path = download_and_extract_gz()
     try:
         df = pd.read_csv(path, low_memory=False)
@@ -102,16 +109,9 @@ def decode_data(): # AI helped read csv file
 
 def fetch_latest_data(): 
     """
-    This function fetches the latest HGNC data and updates 
-    only if new data is available. Writes the most up to date data 
-    to a redis database. 
-
-    Args: 
-        NONE 
-
-    Returns: 
-        NONE 
-    """ 
+    Checks if the Redis database is up to date with the latest data.
+    If not, it fetches the latest data and updates the database.
+    """
 
     current_year = datetime.now().year 
     year_keys = [int(k.decode()) for k in rd.keys() if k.decode().isdigit()]
@@ -130,21 +130,10 @@ def fetch_latest_data():
 @app.route('/data', methods=['GET','POST','DELETE'])
 def process_data() -> Union[list, str]: # used AI for Union type annotation option 
     """
-    This route uses the GET method to retrieve the entire data set from 
-    the Redis database. It also uses the POST method to write the entire 
-    data set to the Redis database. It finally uses the DELETE method 
-    to delete the entire data set from the Redis database. 
-
-    Args: 
-        NONE
-
-    Returns: 
-        data (list): Returns the list of dictionaries pertaining to 
-                     the HGNC data when using the GET method. 
-        OR 
-        result (string): Returns update on what was done to the 
-                         Redis database when using the POST and 
-                         DELETE method. 
+    Depending on the request method, this route will either:
+    1. Return all data from the Redis database. (GET)
+    2. Fetch the latest data from the remote server and update the Redis database. (POST)
+    3. Delete all data from the Redis database. (DELETE)
     """ 
     if request.method == 'GET':
         keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # check for last modified entry and dont include 
@@ -167,14 +156,7 @@ def process_data() -> Union[list, str]: # used AI for Union type annotation opti
 @app.route('/years', methods=['GET']) # make a case where epoch is nonexistent
 def get_all_years() -> List[str]: 
     """
-    This route uses the GET method to retrieve all of the hgnc_id fields 
-    from the Redis database. 
-
-    Args: 
-        NONE
-
-    Returns: 
-        keys (list): Returns a list with all of the hgnc_id fields. 
+    This route uses the GET method to retrieve all years from the Redis database.
     """
     # fetch_latest_data() # needs to fetch data to make sure database is not empty 
     try: 
@@ -190,17 +172,7 @@ def get_all_years() -> List[str]:
 @app.route('/years/<years>/regions', methods=['GET']) 
 def get_year(years:str, region_names=None) -> dict: 
     """
-    This route uses the GET method to retrieve a certain hgnc_id field 
-    and the dictionary with all of its key:value pairs. 
-
-    Args: 
-        hgnc_id (string): A string specifying the key of the certain 
-                          hgnc_id you want to extract from the Redis
-                          database. 
-
-    Returns: 
-        response (dict): Returns a dictionary with all of the key:value
-                         pairs of the specified hgnc_id field. 
+    This route uses the GET method to retrieve data for a specific year or range of years for given regions.
     """
 
     try:
@@ -272,17 +244,7 @@ def get_year(years:str, region_names=None) -> dict:
 @app.route('/regions', methods=['GET']) 
 def get_regions() -> dict: 
     """
-    This route uses the GET method to retrieve a certain hgnc_id field 
-    and the dictionary with all of its key:value pairs. 
-
-    Args: 
-        hgnc_id (string): A string specifying the key of the certain 
-                          hgnc_id you want to extract from the Redis
-                          database. 
-
-    Returns: 
-        response (dict): Returns a dictionary with all of the key:value
-                         pairs of the specified hgnc_id field. 
+    This route uses the GET method to retrieve all regions from the Redis database. 
     """
     try: 
         keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # AI used to check for last modified entry 
@@ -302,17 +264,7 @@ def get_regions() -> dict:
 @app.route('/regions/<region>', methods=['GET']) 
 def get_region(region:str) -> List[dict]: 
     """
-    This route uses the GET method to retrieve a certain hgnc_id field 
-    and the dictionary with all of its key:value pairs. 
-
-    Args: 
-        hgnc_id (string): A string specifying the key of the certain 
-                          hgnc_id you want to extract from the Redis
-                          database. 
-
-    Returns: 
-        response (dict): Returns a dictionary with all of the key:value
-                         pairs of the specified hgnc_id field. 
+    This route returns data for a specific region from the Redis database.
     """
     try: 
         keys = [key.decode('utf-8') for key in rd.keys() if key.decode('utf-8') != "Last-Modified"] # AI used to check for last modified entry 
@@ -335,17 +287,7 @@ def get_region(region:str) -> List[dict]:
 @app.route('/regions/<region>/<eras>', methods=['GET']) 
 def get_region_eras(eras:str, region:str) -> List[dict]: 
     """
-    This route uses the GET method to retrieve a certain hgnc_id field 
-    and the dictionary with all of its key:value pairs. 
-
-    Args: 
-        hgnc_id (string): A string specifying the key of the certain 
-                          hgnc_id you want to extract from the Redis
-                          database. 
-
-    Returns: 
-        response (dict): Returns a dictionary with all of the key:value
-                         pairs of the specified hgnc_id field. 
+    this route returns data for a specific region and year range from the Redis database.
     """    
     try:
         if '-' in eras:
@@ -411,6 +353,9 @@ def get_region_eras(eras:str, region:str) -> List[dict]:
 
 @app.route('/help', methods=['GET']) 
 def get_help(): 
+    """
+    This route returns a help message with instructions on how to use the API.
+    """
     return """
 submit a job:\n
 curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type": "line"}' -H "Content-Type: application/json"\n
@@ -428,6 +373,11 @@ curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "1975", "plot_type
 
 @app.route('/jobs', methods=['GET', 'POST', 'DELETE']) 
 def get_jobs() -> Union[list, str]: 
+    """
+    This route uses the GET method to retrieve all job IDs from the Redis database.
+    The POST method is used to create a new job with at least a start and end date.
+    The DELETE method is used to delete all jobs from the Redis database.
+    """
     if request.method == 'POST': 
         try: 
             data = request.get_json()
@@ -466,18 +416,8 @@ def get_jobs() -> Union[list, str]:
 @app.route('/jobs/<jobid>', methods=['GET', 'DELETE']) 
 def get_job(jobid: str) -> Union[dict,tuple]: 
     """
-    This route uses the GET method to retrieve a job's information
-    from the Redis database, including its job ID, status, start date,
-    and end date.
-
-    Args:
-        jobid (str): A string representing the unique job ID.
-
-    Returns:
-        dict: A dictionary containing job information if the job exists.
-        OR
-        tuple: A tuple with an error dictionary and HTTP status code 500
-               if an exception occurs.
+    This route uses the GET method to retrieve a job by its ID from the Redis database.
+    The DELETE method is used to delete a specific job from the Redis database.
     """
     if request.method == 'GET':
         try: 
@@ -496,7 +436,12 @@ def get_job(jobid: str) -> Union[dict,tuple]:
     return jsonify({"error": f"Method {request.method} Not Allowed."}), 405    
 
 @app.route('/results', methods=['GET', 'DELETE']) # able to delete all results from database
-def results_all(): 
+
+def results_all():
+    """
+    This route uses the GET method to retrieve all job IDs for completed jobs from the Redis database.
+    The DELETE method is used to delete all results from the Redis database.
+    """ 
     if request.method == 'GET':
         try:
             keys = resdb.keys()
@@ -518,17 +463,8 @@ def results_all():
 @app.route('/results/<jobid>', methods=['GET', 'DELETE']) 
 def results(jobid: str) -> Union[dict,tuple]: 
     """
-    This route uses the GET method to retrieve the result of a given job ID
-    from the Redis database. 
-
-    Args:
-        jobid (str): A string representing the unique job ID.
-
-    Returns:
-        dict: A dictionary containing the results for the specified job.
-        OR
-        tuple: A tuple with an error dictionary and HTTP status code 500
-               if an exception occurs.
+    This route uses the GET method to retrieve results for a specific job ID from the Redis database.
+    The DELETE method is used to delete results for a specific job ID from the Redis database.
     """
     if request.method == 'GET':
         try:
@@ -548,6 +484,10 @@ def results(jobid: str) -> Union[dict,tuple]:
 
 @app.route('/download/<jobid>', methods=['GET'])
 def download(jobid):
+    """
+    This route uses the GET method to download the results of a specific job ID from the Redis database.
+    Depending on the job type, it will return either a GIF, a ZIP file of images, or a PNG file.
+    """
     job_dict = get_job_by_id(jobid)
     flag = string_to_bool(job_dict.get("animate"))
     plot_type = job_dict.get("plot_type")
