@@ -361,82 +361,13 @@ def get_help():
     <!DOCTYPE html>
     <html lang="en">
     <head>
-      <meta charset="UTF-8">
-      <title>API Routes</title>
-      <style>
-        body {
-          font-family: Arial, sans-serif;
-          padding: 20px;
-        }
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 20px;
-        }
-        thead {
-          background-color: #f2f2f2;
-        }
-        th, td {
-          border: 1px solid #ddd;
-          padding: 12px;
-          text-align: left;
-        }
-        th {
-          background-color: #e0e0e0;
-        }
-        tr:nth-child(even) {
-          background-color: #fafafa;
-        }
-        tr:hover {
-          background-color: #f1f1f1;
-        }
-      </style>
-    </head>
-    <body>
-      <h2>API Route Table</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Route</th>
-            <th>Method</th>
-            <th>Functionality</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>/data</td><td>GET</td><td>Put data into Redis</td></tr>
-          <tr><td>/data</td><td>POST</td><td>Return all data from Redis</td></tr>
-          <tr><td>/data</td><td>DELETE</td><td>Delete all data from Redis</td></tr>
-          <tr><td>/years</td><td>GET</td><td>Return JSON-formatted list of all available years</td></tr>
-          <tr><td>/years/{year}/regions</td><td>GET</td><td>Return all data for a specific year and its regions</td></tr>
-          <tr><td>/years/{year}/regions?names=a,b,c</td><td>GET</td><td>Return data for a year and selected regions</td></tr>
-          <tr><td>/regions</td><td>GET</td><td>List all regions/countries in the dataset</td></tr>
-          <tr><td>/regions/{region}</td><td>GET</td><td>All year data for a specific region</td></tr>
-          <tr><td>/regions/{region}/{eras}</td><td>GET</td><td>Data for a region across specific eras/years</td></tr>
-          <tr><td>/help</td><td>GET</td><td>Returns this route guide</td></tr>
-          <tr><td>/jobs</td><td>GET</td><td>List all job IDs</td></tr>
-          <tr><td>/jobs</td><td>POST</td><td>Submit a new job with a JSON body</td></tr>
-          <tr><td>/jobs</td><td>DELETE</td><td>Delete all jobs from Redis</td></tr>
-          <tr><td>/jobs/{jobid}</td><td>GET</td><td>Retrieve data for a specific job</td></tr>
-          <tr><td>/jobs/{jobid}</td><td>DELETE</td><td>Delete a specific job</td></tr>
-          <tr><td>/results</td><td>GET</td><td>List all result IDs</td></tr>
-          <tr><td>/results</td><td>DELETE</td><td>Delete all result data</td></tr>
-          <tr><td>/results/{jobid}</td><td>GET</td><td>Return results for a specific job</td></tr>
-          <tr><td>/results/{jobid}</td><td>DELETE</td><td>Delete results for a specific job</td></tr>
-        </tbody>
-      </table>
-    </body>
-    </html>
-    """
-    return Response(html, mimetype='text/html')
-
-
-    html = """
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
     <meta charset="UTF-8">
     <title>API Routes</title>
     <style>
+        body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        }
         table {
         width: 100%;
         border-collapse: collapse;
@@ -449,6 +380,7 @@ def get_help():
         border: 1px solid #ddd;
         padding: 12px;
         text-align: left;
+        vertical-align: top;
         }
         th {
         background-color: #e0e0e0;
@@ -458,6 +390,14 @@ def get_help():
         }
         tr:hover {
         background-color: #f1f1f1;
+        }
+        code {
+        white-space: pre-wrap;
+        display: block;
+        background-color: #f9f9f9;
+        padding: 10px;
+        border-radius: 5px;
+        border: 1px solid #ddd;
         }
     </style>
     </head>
@@ -493,8 +433,34 @@ def get_help():
         <tr><td>/results/{jobid}</td><td>DELETE</td><td>Delete all results data associated with a {jobid}</td></tr>
         </tbody>
     </table>
+
+    <h2>Example POST Request</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Endpoint</th>
+            <th>Method</th>
+            <th>Example cURL</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr>
+            <td>/jobs</td>
+            <td>POST</td>
+            <td>
+            <code>
+        curl http://worldpop.coe332.tacc.cloud/jobs -X POST -d '{"start": "1950","end": "1955","plot_type": "line","Location": "Asia,Mexico","query1": "IMR","query2": "Q5", "amimate": "False"}' -H "Content-Type: application/json"}' -H "Content-Type: application/json"
+            </code>
+            </td>
+        </tr>
+        </tbody>
+      <body>
+        Must have a valid start and end year. No location wil default to "World", no plot type will default to "line", no query1 or query2 will default to  query1 = "TPopulation1Jan" and query2 = None, no animation will default to False. Line plots canot be animated.
+      </body>
+    </table>
     </body>
     </html>
+
     """
     return Response(html, mimetype='text/html')
 
