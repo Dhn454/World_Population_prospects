@@ -2,7 +2,7 @@ import gzip
 import shutil 
 import logging
 from typing import List, Union 
-from flask import Flask, request, jsonify, send_file 
+from flask import Flask, request, jsonify, send_file, Response
 from datetime import datetime
 import redis 
 import zipfile
@@ -356,75 +356,73 @@ def get_help():
     """
     This route returns a help message with instructions on how to use the API.
     """
-    return 
-"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>API Routes</title>
-  <style>
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-    }
-    thead {
-      background-color: #f2f2f2;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 12px;
-      text-align: left;
-    }
-    th {
-      background-color: #e0e0e0;
-    }
-    tr:nth-child(even) {
-      background-color: #fafafa;
-    }
-    tr:hover {
-      background-color: #f1f1f1;
-    }
-  </style>
-</head>
-<body>
-  <h2>API Route Table</h2>
-  <table>
-    <thead>
-      <tr>
-        <th>Route</th>
-        <th>Method</th>
-        <th>Functionality</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr><td>/data</td><td>GET</td><td>Put data into Redis</td></tr>
-      <tr><td>/data</td><td>POST</td><td>Return all data from Redis</td></tr>
-      <tr><td>/data</td><td>DELETE</td><td>Delete all data from Redis</td></tr>
-      <tr><td>/years</td><td>GET</td><td>Return json-formatted list of all the years available from the dataset</td></tr>
-      <tr><td>/years/{year}/regions</td><td>GET</td><td>Return all data associated with a specific year and all its regions</td></tr>
-      <tr><td>/years/{year}/regions?names=a,b,c</td><td>GET</td><td>Return data associated with a specific year and the specified regions</td></tr>
-      <tr><td>/regions</td><td>GET</td><td>Return a list of all regions/countries in the dataset</td></tr>
-      <tr><td>/regions/{region}</td><td>GET</td><td>Return data of all the years for a specific {region}</td></tr>
-      <tr><td>/regions/{region}/{eras}</td><td>GET</td><td>Return data for a specific region and the specified eras/years</td></tr>
-      <tr><td>/help</td><td>GET</td><td>Returns instructions to post a job</td></tr>
-      <tr><td>/jobs</td><td>GET</td><td>Return a list of all job IDs</td></tr>
-      <tr><td>/jobs</td><td>POST</td><td>Submits a new job to the queue by sending a json dictionary in the request body</td></tr>
-      <tr><td>/jobs</td><td>DELETE</td><td>Deletes all jobs from Redis database</td></tr>
-      <tr><td>/jobs/{jobid}</td><td>GET</td><td>Return all data associated with a {jobid}</td></tr>
-      <tr><td>/jobs/{jobid}</td><td>DELETE</td><td>Delete all job data associated with a {jobid}</td></tr>
-      <tr><td>/results</td><td>GET</td><td>Return a list of result IDs</td></tr>
-      <tr><td>/results</td><td>DELETE</td><td>Delete all results data</td></tr>
-      <tr><td>/results/{jobid}</td><td>GET</td><td>Return the results associated with a {jobid}</td></tr>
-      <tr><td>/results/{jobid}</td><td>DELETE</td><td>Delete all results data associated with a {jobid}</td></tr>
-    </tbody>
-  </table>
-</body>
-</html>
-
-"""
-
+    html = """
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <title>API Routes</title>
+    <style>
+        table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        }
+        thead {
+        background-color: #f2f2f2;
+        }
+        th, td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+        }
+        th {
+        background-color: #e0e0e0;
+        }
+        tr:nth-child(even) {
+        background-color: #fafafa;
+        }
+        tr:hover {
+        background-color: #f1f1f1;
+        }
+    </style>
+    </head>
+    <body>
+    <h2>API Route Table</h2>
+    <table>
+        <thead>
+        <tr>
+            <th>Route</th>
+            <th>Method</th>
+            <th>Functionality</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr><td>/data</td><td>GET</td><td>Put data into Redis</td></tr>
+        <tr><td>/data</td><td>POST</td><td>Return all data from Redis</td></tr>
+        <tr><td>/data</td><td>DELETE</td><td>Delete all data from Redis</td></tr>
+        <tr><td>/years</td><td>GET</td><td>Return json-formatted list of all the years available from the dataset</td></tr>
+        <tr><td>/years/{year}/regions</td><td>GET</td><td>Return all data associated with a specific year and all its regions</td></tr>
+        <tr><td>/years/{year}/regions?names=a,b,c</td><td>GET</td><td>Return data associated with a specific year and the specified regions</td></tr>
+        <tr><td>/regions</td><td>GET</td><td>Return a list of all regions/countries in the dataset</td></tr>
+        <tr><td>/regions/{region}</td><td>GET</td><td>Return data of all the years for a specific {region}</td></tr>
+        <tr><td>/regions/{region}/{eras}</td><td>GET</td><td>Return data for a specific region and the specified eras/years</td></tr>
+        <tr><td>/help</td><td>GET</td><td>Returns instructions to post a job</td></tr>
+        <tr><td>/jobs</td><td>GET</td><td>Return a list of all job IDs</td></tr>
+        <tr><td>/jobs</td><td>POST</td><td>Submits a new job to the queue by sending a json dictionary in the request body</td></tr>
+        <tr><td>/jobs</td><td>DELETE</td><td>Deletes all jobs from Redis database</td></tr>
+        <tr><td>/jobs/{jobid}</td><td>GET</td><td>Return all data associated with a {jobid}</td></tr>
+        <tr><td>/jobs/{jobid}</td><td>DELETE</td><td>Delete all job data associated with a {jobid}</td></tr>
+        <tr><td>/results</td><td>GET</td><td>Return a list of result IDs</td></tr>
+        <tr><td>/results</td><td>DELETE</td><td>Delete all results data</td></tr>
+        <tr><td>/results/{jobid}</td><td>GET</td><td>Return the results associated with a {jobid}</td></tr>
+        <tr><td>/results/{jobid}</td><td>DELETE</td><td>Delete all results data associated with a {jobid}</td></tr>
+        </tbody>
+    </table>
+    </body>
+    </html>
+    """
+    return Response(html, mimetype='text/html')
 
 @app.route('/jobs', methods=['GET', 'POST', 'DELETE']) 
 def get_jobs() -> Union[list, str]: 
