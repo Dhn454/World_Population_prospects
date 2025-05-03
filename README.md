@@ -1,7 +1,7 @@
 # Earth In Numbers 
 
 ## Table of Contents
-1. [Description](README.md#description) 
+1. [Description: World Population Flask API with Redis Integration](README.md#description-world-population-flask-api-with-redis-integration) 
 2. [Software Diagram](README.md#software-diagram)
 2. [World Population Prospects Data Set](README.md#world-population-prospects-data-set)
 2. [Getting Started](README.md#getting-started)
@@ -13,37 +13,18 @@
 9. [Resources](README.md#resources)
 10. [AI Usage](README.md#ai-usage)
 
-## Makefile Commands
 
-| Command             | Description                                                 |
-|---------------------|-------------------------------------------------------------|
-| `make k`            | Apply all Kubernetes configs and show status                |
-| `make k-up`         | Apply Kubernetes manifests only                             |
-| `make k-down`       | Delete Kubernetes resources                                 |
-| `make k-status`     | Check Kubernetes pods, services, and ingress                |
-| `make docker-up`    | Build and start all Docker services (includes data download)|
-| `make docker-down`  | Stop and remove all Docker services                         |
-| `make docker-api`   | Restart only the `flask-app` Docker service (includes data download) |
-| `make docker-worker`| Restart only the `worker` Docker service                    |
-| `make docker-redis` | Restart only the `redis-db` Docker service                  |
+## Description: World Population Flask API with Redis Integration
 
+This project features a containerized Flask API that interfaces with a [Redis](https://redis.io) database to manage and serve global population data based on the [UN World Population Prospects 2024 dataset](https://population.un.org/wpp/downloads?folder=Standard%20Projections&group=CSV%20format). The `api.py` script handles the ingestion, caching, and access to this demographic data, stored in Redis as structured `key:value` pairs across separate databases for raw data, job tracking, and processed results.
 
+### API Functionality
 
-## Description 
+The API exposes several routes for interacting with the dataset and managing long-duration queries via a Redis-backed job queue system. 
 
-This code features two routes in a containerized Flask API that communicates with a [Redis](https://redis.io) database. The ```api.py``` establishes connection with a redis database and checks if the database is empty. If it is empty or if the data is out of date, it injests the [HGNC Data](https://www.genenames.org/download/archive/) using the requests library and writes it to the redis database as ```key:value``` pairs. You are able to write the entire data set to the redis database, delete the entire data set from redis, and return the data set to the user. There is also a route which returns a JSON-formatted list of all hgnc_id fields as well as the entire dictionary of a specific hgnc_id field. 
+#### Available Routes
 
-The api script also contains three functions of the names: 
-* get_data - Gets the list of dictionaries of the different genes from the [HGNC](https://www.genenames.org/download/archive/) website using the requests library. 
-* fetch_latest_data - Fetches the latest [HGNC](https://www.genenames.org/download/archive/) data and updates redis database only if new data is available. 
-* count_keys - Returns the list of all the distinct keys from a data set in a Redis database. 
-
-This project now includes functionality for managing jobs through a queue system implemented using Redis and a results route that gives the user the results from their jobs. Jobs represent queries defined by a start and end date, and they move through a lifecycle: submitted → in-progress → complete. The updated worker script and a new route support this functionality:
-
-* worker.py: Continuosly grabs the next job in line, it processes it and updates its status in the Redis database once completed. 
-* jobs.py: Provides the main logic for managing job creation, queuing, storage, and updates. It generates job IDs, stores and retrieves job data from Redis, and queues jobs for the worker.py. 
-
-Here is the full list of routes metioned above and their syntax: 
+Here is the full list of the available routes and their syntax: 
 
 |  Route                              |  Method  | Functionality                                                                     | 
 | ----------------------------------- | -------- | --------------------------------------------------------------------------------- | 
@@ -55,33 +36,78 @@ Here is the full list of routes metioned above and their syntax:
 | /years/{year}/regions?names=a,b,c   | GET      | Return data associated with a specific year and the specified regions             | 
 | /regions                            | GET      | Return a list of all regions/countries in the dataset                             | 
 | /regions/{region}                   | GET      | Return data of all the years for a specific {region}                              | 
-| /results/{region}/{eras}            | GET      | Return data for a specific region and the specified eras/years                    | 
-| /jobs                               | GET      | Return a list of all job IDs                                                      |
+| /regions/{region}/{eras}            | GET      | Return data for a specific region and the specified eras/years                    | 
 | /help                               | GET      | Returns instructions to post a job                                                | 
+| /jobs                               | GET      | Return a list of all job IDs                                                      |
 | /jobs                               | POST     | Submits a new job to the queue by sending a json dictionary in the request body   | 
+| /jobs                               | DELETE   | Deletes all jobs from Redis database                                              | 
 | /jobs/{jobid}                       | GET      | Return all data associated with a {jobid}                                         | 
+| /jobs/{jobid}                       | DELETE   | Delete all job data associated with a {jobid}                                     | 
+| /results                            | GET      | Return a list of result IDs                                                       | 
+| /results                            | DELETE   | Delete all results data                                                           | 
 | /results/{jobid}                    | GET      | Return the results associated with a {jobid}                                      | 
+| /results/{jobid}                    | DELETE   | Delete all results data associated with a {jobid}                                 | 
 
-This project illustrates how to ingest data from a Web API using the ```requests``` library and saving it to a persistent redis database using the ```redis``` library. It also helps facilitate the analysis of such data by using the five functions and three routes mentioned above. 
 
-This code is necessary when you want to constantly have the updated data to your disposal for analysis. It facilitates looking up a certain gene from the database as well as a complete list of all genes in the database. It also helps in queuing jobs for data analysis as well as managing those jobs. 
+### Backend Scripts
+
+#### `api.py`
+Handles:
+- Flask API setup
+- Redis connections (`rd`, `jdb`, `resdb`)
+- Dataset ingestion (from local cache or remote source)
+- Decompression of `.gz` files
+- Job submission and status endpoints 
+
+#### `worker.py`
+A background worker that:
+- Listens for queued jobs in Redis
+- Processes each job by filtering and transforming population data
+- Writes results and status updates back to Redis
+
+#### `jobs.py`
+Manages:
+- Job creation and unique ID generation
+- Queuing logic
+- Status tracking
+- Data retrieval for processing and final delivery
+
+### Key Functions in `api.py`
+
+- **`download_and_extract_gz()`**  
+  Checks for a cached `.gz` file of the dataset. If not found, attempts to download it. Decompresses the `.gz` file into a `.csv`. 
+
+- **`decode_data()`**  
+  Decodes the extracted csv file into a nested list of dictionaries using the `pandas` library. 
+
+- **`fetch_latest_data()`**  
+  Loads the dataset into Redis, updating the database only if newer data is available. 
+
+### Deployment
+
+The application is designed for containerized deployment using Docker and Kubernetes. Redis and Flask API services are deployed as separate pods, and PersistentVolumeClaims are used for data caching.
+
+This project illustrates how to ingest data from a Web API using the ```requests``` library and saving it to a persistent redis database using the ```redis``` library. It also helps facilitate the analysis of such data by using the functions and routes mentioned above. 
+
+This code is necessary when you want to analyze world population trends throughout the years in different regions of the world. It facilitates looking up a certain region/year from the database as well as a complete list of all the years and regions available in the database. 
+
 
 ## Software Diagram 
 ![Software Diagram](diagram.png "Software Diagram Flowchart")
 
-This diagram shows the typical flow of data focused around the files of homework08. We can clearly see that the docker container pulls data from the HUGO Gene Nomenclature Committee Database using the ```requests``` library. The gene_api.py inside the docker container converts the response from the database into a json like list of dictionaries that we can analyze, illustrated by the data block. This is done inside the data/ route using the 'POST' method. Note that the 'POST' method requests the data from the Web API and writes it to the redis database. A local data backup is created to make the redis database persistent. We also have a ```Last-Modified``` dictionary with the time the last data request was modified, this allows us to be more efficient when updating the redis database. 
+This diagram shows the typical flow of data between the Web API, the Redis database, Flask, and Kubernetes. We can clearly see that the docker container and Kubernetes pods pull data from the [UN World Population Prospects 2024 dataset](https://population.un.org/wpp/downloads?folder=Standard%20Projections&group=CSV%20format) using the ```requests``` library. The `api.py` inside the Docker container converts the response from the database into a json like list of dictionaries that we can analyze, illustrated by the data block. This is done inside the data/ route using the 'POST' method. Note that the 'POST' method requests the data from the Web API and writes it to the redis database. A local data backup is created to make the redis database persistent. We also have a ```Last-Modified``` dictionary with the time the last data request was modified, this allows us to be more efficient when updating the redis database. 
 
-The user is able to interact with the containerised flask application using the ```curl``` command. Running the illustrated routes using the ```curl localhost:5000```, it allows the user to call each each containerized function and analyze the HUGO Gene Nomenclature Committee Data. 
+The user is able to interact with the containerised flask application using the ```curl``` command. Running the illustrated routes using the ```curl localhost:5000```, it allows the user to call each each containerized function and analyze the [UN World Population Prospects 2024 dataset](https://population.un.org/wpp/downloads?folder=Standard%20Projections&group=CSV%20format). 
 
-Our API also features a queue methodology where each posted job will be added to the queue as a first come first serve. Each job once finished will be taken off the queue and the user will be able to see the results with the GET results route as illustrated in the diagram above. 
+The user is also able to access the same routes and services through Kubernetes hosted on a [TACC server](https://tacc.utexas.edu). Please look at the [Accessing Microservice](README.md#accessing-microservice) section for further details. 
+
+Our API also features a queue methodology where each posted job will be added to the queue as a first come first serve. Each job once finished will be taken off the queue and the user will be able to see the results with the GET results route as well as download a png/gif to your local hardrive as illustrated in the diagram above. 
 
 ## HUGO Gene Nomenclature Committee (HGNC) Data Set
 
-The [HGNC Data Set](https://www.genenames.org/download/archive/) is a comprehensive collection of human gene nomenclature maintained by the HUGO Gene Nomenclature Committee (HGNC). The dataset provides standardized gene symbols and unique identifiers for human genes, ensuring consistency in genetic research and data analysis.
+The World Population Prospects 2024 is a comprehensive dataset compiled by the United Nations, offering detailed estimates and projections of population trends from 1950 to 2100 for 237 countries and regions. It draws from nearly two thousand national censuses and thousands of surveys, providing insights into demographic indicators such as population size, growth, birth and death rates, and life expectancy. This dataset is essential for understanding long-term global and regional population dynamics and is widely used for policy planning, economic forecasting, and development research. In our application, we use a compressed CSV file containing medium-variant projections to serve demographic data efficiently through a Redis-backed Flask API. 
 
-Each entry in the dataset corresponds to a specific human gene and contains detailed information, including the gene’s approved symbol, name, previous symbols, aliases, and database cross-references. The dataset also includes various identifiers linking each gene to external databases such as Ensembl, Entrez, RefSeq, UniProt, and OMIM. 
-
-The dataset is available in multiple formats, including JSON, TXT, and XML, allowing for easy integration into bioinformatics pipelines and applications. It is regularly updated to reflect the latest changes in gene nomenclature and new discoveries in the field of genetics.
+Here are the following data columns and how to query them: 
 
 | Acronym         | Description                                                                | How to Query                  |
 |-----------------|----------------------------------------------------------------------------|-------------------------------|
@@ -140,9 +166,9 @@ The dataset is available in multiple formats, including JSON, TXT, and XML, allo
 | NetMigrations   | Net Number of Migrants (thousands)                                         | "query1": "NetMigrations"     |
 | CNMR            | Net Migration Rate (per 1,000 population)                                  | "query1": "CNMR"              |
 
-For more information, visit: [HGNC Download Archive](https://www.genenames.org/download/archive/) 
+For more information, visit: [UN World Population Prospects 2024 dataset](https://population.un.org/wpp/downloads?folder=Standard%20Projections&group=CSV%20format)  
 
-_Disclaimer: The above description is based on publicly available information from the HGNC website._
+_Disclaimer: The above description is based on publicly available information from the United Nations website._
 
 ## Getting Started 
 Check which directory you are currently on by running
