@@ -8,7 +8,7 @@
 *.gz
 
 #ignore all .gif files
-*.gif
+# *.gif
 
 #ignore __pychache
 __pycache__
