@@ -552,40 +552,32 @@ The new _jobs_ route allows you to create a new job with a unique identifier usi
 
 To submit a job, please do the following: 
 ```bash 
-curl localhost:5000/jobs -X POST -d '{"date_approved_start": "YYYY-MM-DD", "date_approved_end": "YYYY-MM-DD"}' -H "Content-Type: application/json" 
-
+curl localhost:5000/jobs -X POST -d '{"start": "YYYY", "end": "YYYY", "location": "a,b,c", "plot_type": "plot", "query1": "query", "query2": "query", "animate": "bool"}' -H "Content-Type: application/json" 
+```
+Where "a,b,c" is a comma separated list of any locations within the database, "plot" can be either line, bar, or scatter, "query" can be any previously listed query parameter, and "bool" is a string representing a boolian. When choosing to animate, the plot type must be either a scatter plot or a bar graph.
+```bash  
 # Example 
-curl localhost:5000/jobs -X POST -d '{"date_approved_start": "2023-01-01", "date_approved_end": "2023-04-05"}' -H "Content-Type: application/json" 
+curl localhost:5000/jobs -X POST -d '{"start": "1950", "end": "2010", "location": "Zimbabwe,Viet_Nam,United_Kingdom,Sweden,Sri_Lanka,Liechtenstein,Japan,Djibouti", "plot_type": "scatter", "query1": "PopDensity", "query2": "LEx", "animate": "True"}' -H "Content-Type: application/json" 
 
 # Example Output
-Job created: {'id': 'c4e73a9b-0878-482e-b31b-c39ba0ba1cb3', 'status': 'submitted', 'start': '2023-01-01', 'end': '2023-04-05'} 
+{
+  "job": {
+    "animate": "True",
+    "end": "2010",
+    "id": "21f01f38-26e7-4763-b719-6c70c224f80d",
+    "location": "Zimbabwe,Viet_Nam,United_Kingdom,Sweden,Sri_Lanka,Liechtenstein,Japan,Djibouti",
+    "plot_type": "scatter",
+    "query1": "PopDensity",
+    "query2": "LEx",
+    "start": "1950",
+    "status": "submitted"
+  },
+  "message": "Job created"
+} 
 ``` 
 
 Please make sure to take note of the 'id' field. This will be the unique identifier for that specific job. You will be able to retrieve the details of that job with the [_/jobs/'jobid'_ route](README.md#running-jobsjobid-route) that will be discussed later. 
 
-Note that the route will not allow unproperly formatted data packets. The dates should be strings in double quotes in 'YYYY-MM-DD' format. It also allows 'YYYY-M-D' format since the [datetime](https://docs.python.org/3/library/datetime.html) module converts both formats to the same value. 
-
-If you submit a wrong data packet you will get an error like this: 
-```bash
-# Unproperly formatted data packet 
-curl localhost:5000/jobs -X POST -d '{"date_approved_start": "2023-01", "date_approved_end": "2023-04-05"}' -H "Content-Type: application/json" 
-
-# Example Output
-{
-  "error": "Invalid date format. Dates must be strings in 'YYYY-MM-DD' format."
-}
-``` 
-
-Also note that the end time has to be greater than the start time, if not you will get an error: 
-```bash 
-# end time less than start time
-curl localhost:5000/jobs -X POST -d '{"date_approved_start": "2023-01-01", "date_approved_end": "2022-04-05"}' -H "Content-Type: application/json"
-
-# Example Output
-{
-  "error": "date_approved_end must be the same as or after date_approved start."
-}
-```
 
 ### Running _/jobs_ route with the _GET_ method
 You are able to retrieve all the job IDs using the following command: 
@@ -610,6 +602,7 @@ curl localhost:5000/jobs
   "4a12907a-fed4-429e-b8c7-dbc11d93ea78",
   "02239c82-8ed0-4e2a-87e8-4486985faee6",
   "1fc70b25-8c54-4074-a3e0-72ea07753bfd",
+  "21f01f38-26e7-4763-b719-6c70c224f80d",
   "f6cce5db-8ffa-44f3-9735-547ff5e31bcf",
   "f86ef2ed-d4d3-4782-a525-d01b4aebf8f8"
 ]
@@ -626,16 +619,21 @@ curl localhost:5000/jobs/f86ef2ed-d4d3-4782-a525-d01b4aebf8f8
 
 # Example Output
 {
-  "end": "2023-01-31",
-  "id": "f86ef2ed-d4d3-4782-a525-d01b4aebf8f8",
-  "start": "2023-01-01",
+  "animate": "True",
+  "end": "2010",
+  "id": "21f01f38-26e7-4763-b719-6c70c224f80d",
+  "location": "Zimbabwe,Viet_Nam,United_Kingdom,Sweden,Sri_Lanka,Liechtenstein,Japan,Djibouti",
+  "plot_type": "scatter",
+  "query1": "PopDensity",
+  "query2": "LEx",
+  "start": "1950",
   "status": "complete"
 }
 ```
 You should have received a dictionary with the start and end dates you inputted as well as the id and status of your job. You can try and queue a few jobs and check each job's status using this route. 
 
 ### Running _/results/'jobid'_ route
-Once you have submitted your job and you will like to check out the results of your jobs, you are able to do so with the following route. The only identifier you need is your unique 'jobid'. 
+Once you have submitted your job and you will like to check out the results of your jobs, you are able to do so with the following route. The only identifier you need is your unique 'jobid'. If the job was animated the result will be empty.
 
 ```bash
 curl localhost:5000/results/<jobid>
@@ -644,39 +642,7 @@ curl localhost:5000/results/<jobid>
 curl localhost:5000/results/4ebefcb7-9c8f-4954-92e4-0ce5afab4ce4 
 
 # Example Output
-{
-  "job": {
-    "end": "2023-04-05",
-    "id": "4ebefcb7-9c8f-4954-92e4-0ce5afab4ce4",
-    "start": "1930-01-01",
-    "status": "complete"
-  },
-  "result": {
-    "RNA, Y": 4,
-    "RNA, cluster": 119,
-    "RNA, long non-coding": 5607,
-    "RNA, micro": 1912,
-    "RNA, misc": 29,
-    "RNA, ribosomal": 60,
-    "RNA, small nuclear": 51,
-    "RNA, small nucleolar": 568,
-    "RNA, transfer": 591,
-    "RNA, vault": 4,
-    "T cell receptor gene": 205,
-    "T cell receptor pseudogene": 38,
-    "complex locus constituent": 69,
-    "endogenous retrovirus": 109,
-    "fragile site": 116,
-    "gene with protein product": 19283,
-    "immunoglobulin gene": 230,
-    "immunoglobulin pseudogene": 203,
-    "pseudogene": 14050,
-    "readthrough": 147,
-    "region": 38,
-    "unknown": 69,
-    "virus integration site": 8
-  }
-}
+
 ```
 
 The following route returned the results of your query in the form of a dictionary. You have your job details and the results section. In the results we can see that we have a count for all the different locus types that were present in all of the genes from the given start date to the end date. 
@@ -686,6 +652,14 @@ Note that if you input a wrong 'jobid' you will get the same message from the jo
 {
   "error": "Job ID '4ebefcb7-9c8f-4954-92e4-0ce5afab4ce' not found."
 }
+```
+
+### Running _/download/'jobid'_ route
+This route will download the images or GIF of the jobid entered. If the job was a scatter plot or a bar graph covering mulitple years and was not animated, this route will give you a ziped file with the images within it. If it was animated it will give you the GIF, and if it was a line plot it will give you the PNG.
+
+```bash
+# Example
+ curl localhost:5000/download/21f01f38-26e7-4763-b719-6c70c224f80d --output data.gif
 ```
 
 ## Running Test Scripts 
