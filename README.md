@@ -187,7 +187,7 @@ cd Earth-In-Numbers
 
 ### Installing Dependencies
 
-This repo uses docker compose to orchestrate the containers, so please go ahead and install [Docker](https://docs.docker.com/engine/install/) and [docker compose](https://docs.docker.com/compose/install/)
+This repo uses docker compose to orchestrate the containers, so please go ahead and install [Docker](https://docs.docker.com/engine/install/) and [docker compose](https://docs.docker.com/compose/install/). [Python 3.12](https://www.python.org/downloads/release/python-3128/) was being used at the time of this development. 
 
 In order to get full compatibility when receiving results you need to install new packages as follows: 
 
@@ -201,166 +201,249 @@ _Note: In order to host your own Kubernetes pods, you will need to install and c
 
 After installing these dependencies, we are able to host the docker containers and also access the kubernetes hosted API.  
 
-### Installing packages for pytest 
-You will also need to install a pytest plugin to be able to run the test scripts. To do that please do the following: 
-```bash 
-pip install pytest-mock
-```
+### Installing Packages for Pytest 
+You will also need to install a pip, pytest, and fakeredis to be able to run the test scripts. To do that please look into these tutorials: 
+- Install pip: https://pip.pypa.io/en/stable/installation/ 
+- Install pytest: https://docs.pytest.org/en/stable/getting-started.html 
+- Install fakeredis: https://pypi.org/project/fakeredis/ 
 
-## Building the Container 
-_Make sure to replace 'rguarneros065' with your Docker Hub username in the docker-compose.yml file as mentioned in the [previous section](README.md#configure-docker-composeyml-file)_
+## Makefile Command 
 
-To build the image run: 
+You may have noticed that there is a Makefile present. This will allow you to build and run the docker containers. Here is a list of each command and its description. 
+
+| Command          | Description                                              |
+|------------------|----------------------------------------------------------|
+| `make k`         | Apply test Kubernetes configs and show status           |
+| `make k-up`      | Apply test Kubernetes configs only                      |
+| `make k-down`    | Delete test Kubernetes resources                        |
+| `make k-status`  | Show status of test Kubernetes pods and services        |
+| `make k-prod`    | Apply production Kubernetes configs and show status     |
+| `make k-prod-up` | Apply production Kubernetes configs only                |
+| `make k-prod-down`| Delete production Kubernetes resources                 |
+| `make k-prod-status`| Show status of production Kubernetes pods and services |
+| `make docker-up` | Download data and start all Docker containers           |
+| `make docker-down`| Stop all Docker containers                             |
+| `make docker-api`| Restart and build only the Flask API container          |
+| `make docker-worker`| Restart and build only the worker container          |
+| `make docker-redis`| Restart and build only the Redis container            |
+
+
+## Building/Running the Containers 
+
+To build and run the containers please do the following: 
 ``` bash
-docker compose build 
-
-# Example Output
-WARN[0000] /home/ubuntu/coe332-hw-guarneros/homework08/docker-compose.yml: `version` is obsolete 
-[+] Building 23.1s (17/22)                                                                           docker:default
- => [worker internal] load build definition from Dockerfile                                                    0.0s
- => => transferring dockerfile: 292B                                                                           0.0s
-...
-```
-
-To ensure you see a copy of your image that was built, run 
-``` bash 
-docker images 
-
-# Example Output
-REPOSITORY                              TAG       IMAGE ID       CREATED              SIZE
-<none>                                  <none>    88b268f3c799   About a minute ago   1.04GB 
-rguarneros065/flask-redis-gene_api      1.0       17c887dfe3fe   About a minute ago   1.04GB 
-...
-``` 
-You should see your username in the repository name. You may also notice that there is a 'none' image, this is caused because the docker-compose.yml file uses the same Dockerfile and tag or both the flask-app and worker services. To delete the 'none' image you can run: 
-```bash
-docker image prune 
-```
-
-## Running Docker Container
-First, let's make sure that we don't have any container using port 5000 by running: 
-```bash
-docker ps -a
-
-# NO CONTAINERS LISTENING TO PORT 5000 EXAMPLE 
-CONTAINER ID   IMAGE     COMMAND   CREATED   STATUS    PORTS     NAMES
-```
-Under the PORTS section, no containers should be listening in to port 5000. If there are containers listening to port 5000 make sure to stop and remove them using the following commands: 
-```bash 
-docker stop <CONTAINER_ID> 
-
-docker rm <CONTAINER_ID> 
-``` 
-
-Now you are ready to run docker compose. 
-```bash 
-docker compose up -d 
-
-# Example Output
-WARN[0000] /home/ubuntu/coe332-hw-guarneros/homework08/docker-compose.yml: `version` is obsolete 
-[+] Running 4/4
- ✔ Network homework08_default        Created                                                                   0.1s 
- ✔ Container homework08-redis-db-1   Started                                                                   0.5s 
- ✔ Container homework08-worker-1     Started                                                                   0.7s 
- ✔ Container homework08-flask-app-1  Started                                                                   0.7s 
-```
-The -d flag allows you to start the service in the background. 
-
-Make sure the containers are up and running:
-```bash 
-docker ps -a 
+make docker-up
 
 # Output
-CONTAINER ID   IMAGE                                    COMMAND                  CREATED          STATUS          PORTS                                       NAMES
-930cd6f203fa   rguarneros065/flask-redis-gene_api:1.0   "python worker.py"       25 seconds ago   Up 23 seconds                                               homework08-worker-1
-214d6a015d7c   rguarneros065/flask-redis-gene_api:1.0   "python api.py"          25 seconds ago   Up 23 seconds   0.0.0.0:5000->5000/tcp, :::5000->5000/tcp   homework08-flask-app-1
-b256c7fdeb20   redis:7                                  "docker-entrypoint.s…"   25 seconds ago   Up 24 seconds   0.0.0.0:6379->6379/tcp, :::6379->6379/tcp   homework08-redis-db-1
-... 
-``` 
+docker compose down
+WARN[0000] /home/ubuntu/Earth-In-Numbers/docker-compose.yml: `version` is obsolete 
+curl -o ./data/WPP2024_Demographic_Indicators_Medium.csv.gz "https://population.un.org/wpp/assets/Excel%20Files/1_Indicator%20(Standard)/CSV_FILES/WPP2024_Demographic_Indicators_Medium.csv.gz"
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100 15.7M  100 15.7M    0     0  17.3M      0 --:--:-- --:--:-- --:--:-- 17.3M
+docker compose up --build -d
+WARN[0000] /home/ubuntu/Earth-In-Numbers/docker-compose.yml: `version` is obsolete 
+[+] Building 0.6s (15/18)                                                                                                                                 docker:default
+ => [flask-app internal] load build definition from Dockerfile                                                                                                      0.0s
+ => => transferring dockerfile: 186B                                                                                                                                0.0s
+ => [worker internal] load build definition from Dockerfile                                                                                                         0.0s
+ => => transferring dockerfile: 186B                                                                                                                                0.0s
+ => [worker internal] load metadata for docker.io/library/python:3.12                                                                                               0.0s
+ => [flask-app internal] load .dockerignore                                                                                                                         0.0s
+ => => transferring context: 2B                                                                                                                                     0.0s
+ => [worker internal] load .dockerignore                                                                                                                            0.0s
+ => => transferring context: 2B                                                                                                                                     0.0s
+ => [worker 1/6] FROM docker.io/library/python:3.12                                                                                                                 0.0s
+ => [flask-app internal] load build context                                                                                                                         0.0s
+ => => transferring context: 27.77kB                                                                                                                                0.0s
+ => [worker internal] load build context                                                                                                                            0.0s
+ => => transferring context: 27.77kB                                                                                                                                0.0s
+ => CACHED [flask-app 2/6] RUN mkdir /app                                                                                                                           0.0s
+ => CACHED [flask-app 3/6] WORKDIR /app                                                                                                                             0.0s
+ => CACHED [flask-app 4/6] COPY requirements.txt /app/requirements.txt                                                                                              0.0s
+ => CACHED [worker 5/6] RUN pip install -r /app/requirements.txt                                                                                                    0.0s
+ => [worker 6/6] COPY /src /app                                                                                                                                     0.1s
+ => [worker] exporting to image                                                                                                                                     0.1s
+ => => exporting layers                                                                                                                                             0.0s
+ => => writing image sha256:83de007520c3a95e8d06647f5cf32a81f2295b610c5362039a170e7802ce77bb                                                                        0.0s
+ => => naming to docker.io/rguarneros065/flask-worldpop_api:1.0                                                                                                     0.0s
+ => [flask-app] exporting to image                                                                                                                                  0.1s
+ => => exporting layers                                                                                                                                             0.0s
+ => => writing image sha256:55b9ce8e785b41c7d28e2c66458d0040a802cbdfad4831a5643c155cb0b27d4a                                                                        0.0s
+ => => naming to docker.io/rguarneros065/flask-worldpop_api:1.0                                                                                                     0.0s
+[+] Running 4/4
+ ✔ Network earth-in-numbers_default        Created                                                                                                                  0.1s 
+ ✔ Container earth-in-numbers-redis-db-1   Started                                                                                                                  0.5s 
+ ✔ Container earth-in-numbers-worker-1     Started                                                                                                                  0.9s 
+ ✔ Container earth-in-numbers-flask-app-1  Started   
+```
 
-You should see 3 containers are up and running. This is due to the api's and the worker's need to establish a connection with each other and the redis database while the API hosts the flask app. 
+You have successfully built and started the necessary docker containers to run the API. Now you are able to query each route and start analyzing the dataset! 
 
-Your container list should have all the containers with an Up status, and the port mapping you specified in the docker-compose.yml file. If this is not the case, then you might have used the wrong ```docker-compose.yml``` file. 
+## Kubernetes Orchestration 
+In order to host the Kubernetes cluster, all you need to do is the following: 
+```bash 
+make k-prod # for launching production pods 
 
-## Accessing Microservice 
-Now you are ready to run your Flask microservice! 
+# Output
+Applying Kubernetes production configs...
+kubectl apply -f kubernetes/prod
+deployment.apps/prod-deployment-flask created
+deployment.apps/prod-deployment-redis created
+deployment.apps/prod-deployment-worker created
+ingress.networking.k8s.io/prod-ingress-flask created
+persistentvolumeclaim/prod-pvc-redis created
+service/prod-flask-service created
+service/prod-flask-nodeport-service created
+service/prod-redis-service created
+Checking Kubernetes production pod and service status...
+kubectl get pods
+NAME                                      READY   STATUS              RESTARTS   AGE
+prod-deployment-flask-58df6c85fb-bmlcz    0/1     ContainerCreating   0          0s
+prod-deployment-redis-58b4dc8b8f-nbfqr    0/1     Pending             0          0s
+prod-deployment-worker-6679f99cf6-2txlg   0/1     ContainerCreating   0          0s
+prod-deployment-worker-6679f99cf6-8chrq   0/1     ContainerCreating   0          0s
+prod-deployment-worker-6679f99cf6-d958c   0/1     ContainerCreating   0          0s
+kubectl get services
+NAME                          TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)          AGE
+prod-flask-nodeport-service   NodePort    10.233.17.239   <none>        5000:32580/TCP   0s
+prod-flask-service            ClusterIP   10.233.38.241   <none>        5000/TCP         0s
+prod-redis-service            ClusterIP   10.233.30.158   <none>        6379/TCP         0s
+kubectl get ingress
+NAME                 CLASS   HOSTS                        ADDRESS   PORTS   AGE
+prod-ingress-flask   nginx   worldpop.coe332.tacc.cloud             80      0s
+```
+
+OR 
+
+```bash
+make k-test # for launching test pods 
+
+# Output
+Applying Kubernetes test configs...
+kubectl apply -f kubernetes/test
+deployment.apps/test-deployment-flask created
+deployment.apps/test-deployment-redis created
+deployment.apps/test-deployment-worker created
+ingress.networking.k8s.io/test-ingress-flask created
+persistentvolumeclaim/test-pvc-redis created
+service/test-flask-service created
+service/test-flask-nodeport-service created
+service/test-redis-service created
+```
+
+Now you are ready to curl through the Kubernetes cluster and/or localhost through docker. 
+
+## Accessing API  
 
 ### Running _/data_ route with the _POST_ method
 To put the entire data set into the Redis database you can run: 
 ``` bash 
-curl -X POST "localhost:5000/data" 
+curl -X POST localhost:5000/data 
 
 # Output
-Loaded the HGNC data to a Redis database 
+Loaded the world population data to a Redis database
 ```
-The following command loaded the entire HGNC data to a Redis database using each dictionary's hgnc_id as the key for each dictionary. A _Last-Modified_ key was written to the database to make sure you are not rewriting a data set with itself. 
 
-Note: This command might take a while since it is trying to fetch the [HGNC](https://www.genenames.org/download/archive/) data. 
+OR 
+
+```bash
+curl -X POST worldpop.coe332.tacc.cloud/data 
+
+# Output
+Loaded the world population data to a Redis database
+```
+
+The following command loaded the entire UN data to a Redis database using each year as the key for each list of dictionaries containing all the information of that specific year. A _Last-Modified_ key was written to the database to make sure you are not rewriting a data set with itself. 
+
+Note: This command might take a while since it is trying to fetch the [UN World Population Prospects 2024 dataset](https://population.un.org/wpp/downloads?folder=Standard%20Projections&group=CSV%20format). 
 
 ### Running _/data_ route with the _GET_ method 
 You can also return the entire data set from the Redis database by running the following: 
-```bash
-curl -X GET "localhost:5000/data"
-```
-OR 
-```bash
-curl "localhost:5000/data" 
-```
 
-Both of the following commands work exactly the same since GET is the default method. 
+``` bash 
+curl -X GET localhost:5000/data 
 
-```bash
 # Example Output
-  {
-    "agr": "HGNC:17767",
-    "alias_symbol": [
-      "bA513I15.2"
-    ],
-    "date_approved_reserved": "2004-03-26",
-    "date_modified": "2014-11-19",
-    "ensembl_gene_id": "ENSG00000271231",
-    "entrez_id": "442205",
-    "hgnc_id": "HGNC:17767",
-    "location": "6p21.31",
-    "location_sortable": "06p21.31",
-    "locus_group": "pseudogene",
-    "locus_type": "pseudogene",
-    "name": "keratin 18 pseudogene 9",
-    "pseudogene.org": "PGOHUM00000243597",
-    "refseq_accession": [
-      "NT_007592"
-    ],
-    "status": "Approved",
-    "symbol": "KRT18P9",
-    "uuid": "128e36a7-ed26-4394-af63-81c57bdac417",
-    "vega_id": "OTTHUMG00000184543"
-  }, 
-  ...
+[ "1950", [
+    {
+      "Location": "India",
+...
+      "Under5Deaths": "0.013",
+      "VarID": "2",
+      "Variant": "Medium"
+    }
+  ]
+]
 ```
-The following command returned the entire data set stored in the redis database. You might notice that each of the dictionaries might not be uniform, meaning that some keys are not present in all of the dictionaries. 
+
+OR 
+
+```bash
+curl -X GET worldpop.coe332.tacc.cloud/data 
+
+# Example Output
+[ "1950", [
+    {
+      "Location": "India",
+...
+      "Under5Deaths": "0.013",
+      "VarID": "2",
+      "Variant": "Medium"
+    }
+  ]
+]
+```
+
+_The ```-X GET``` option is not necessary since GET is the default method._
+
+The following command returned the entire data set stored in the redis database. You might notice that each of the entires has a year as the key and it contains a list of all the dictionaries pertaining to that year. 
 
 ### Running _/data_ route with the _DELETE_ method 
 You are also able to delete the entire data set from the Redis database using the following route: 
-``` bash
-curl -X DELETE "localhost:5000/data" 
+``` bash 
+curl -X DELETE localhost:5000/data 
 
-# Example Output 
-Deleted all data from Redis database 
+# Output
+Deleted all data from Redis database
+```
+
+OR 
+
+```bash
+curl -X DELETE worldpop.coe332.tacc.cloud/data 
+
+# Output
+Deleted all data from Redis database
 ```
 
 You can double-check that the Redis database was cleaned by running the following: 
 ```bash 
-curl -X GET "localhost:5000/data"
+curl -X GET localhost:5000/data 
 
 # Example Output 
 []
 ```
+
+OR 
+
+```bash 
+curl -X GET worldpop.coe332.tacc.cloud/data 
+
+# Example Output 
+[]
+```
+
 You should see an output with an empty list, confirming we indeed deleted the data set from the database. 
 
-### Running _/genes_ route 
+### Running _/years_ route 
 If you want to get a list of all the hgnc_id fields in the data set, run the following: 
 ```bash
-curl "localhost:5000/genes" 
+curl localhost:5000/years 
+
+# OR 
+
+curl worldpop.coe332.tacc.cloud/years 
 
 # Example Output 
 []
@@ -368,37 +451,41 @@ curl "localhost:5000/genes"
 You might get an empty list since we recently deleted all of the key:value pairs in the Redis database. To return all the keys, we first have to use the [POST method](README.md#running-data-route-with-the-post-method). Then we can run the _genes_ route. 
 
 ``` bash 
-curl -X POST "localhost:5000/data" 
+curl -X POST localhost:5000/data 
+
+# OR 
+
+curl -X POST worldpop.coe332.tacc.cloud/data 
 
 # Output
 Loaded the HGNC data to a Redis database 
 ```
 ```bash
-curl "localhost:5000/genes" 
+curl localhost:5000/years
+
+OR 
+
+curl worldpop.coe332.tacc.cloud/years 
 
 # Example Output 
 [
-  "HGNC:47916",
-  "HGNC:39671",
-  "HGNC:24325",
-  "HGNC:30533",
-  "HGNC:56881",
-  "HGNC:46398",
-  "HGNC:54509",
-  "HGNC:36246",
-  "HGNC:1339", 
+  "1950",
+  "1951",
+  "1952",
+  "1953",
+  "1954",
 ...
-```
-This route returned a list of all the hgnc_id fields in the data set. 
+``` 
+This route returned a list of all the years in the data set. 
 
-### Running _/genes/'hgnc_id'_ route 
-Another functionality of the application is returning the dictionary of a specific hgnc_id. 
+### Running _/genes/'years'/regions_ route 
+Another functionality of the application is returning the list of dictionaries of a specific range of years. 
 This is available with the following route:
 ```bash
-curl "localhost:5000/genes/<hgnc_id>"
+curl localhost:5000/years/<years>/regions 
 
 # Example 
-curl "localhost:5000/genes/HGNC:46398"
+curl localhost:5000/years/1950-1951/regions 
 
 # Example Output 
 {
@@ -643,9 +730,7 @@ WARN[0000] /home/ubuntu/coe332-hw-guarneros/homework08/docker-compose.yml: `vers
 You can double check that you successfully exited and removed the running container by running ```docker ps -a```. You should see that all the containers for this project are gone. 
 
 ## Resources 
-* Converting XLSX to JSON: https://www.geeksforgeeks.org/convert-excel-to-json-with-python/
 * Matrix Conversion: https://www.geeksforgeeks.org/how-to-convert-pandas-dataframe-into-a-list/
-
 * Logging Documentation: https://docs.python.org/3/howto/logging.html 
 * Requests Library: https://pypi.org/project/requests/ 
 * HGNC Data: https://www.genenames.org/download/archive/
