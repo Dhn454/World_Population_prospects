@@ -478,7 +478,7 @@ curl worldpop.coe332.tacc.cloud/years
 ``` 
 This route returned a list of all the years in the data set. 
 
-### Running _/genes/'years'/regions_ route 
+### Running _/years/'years'/regions_ route 
 Another functionality of the application is returning the list of dictionaries of a specific range of years. 
 This is available with the following route:
 ```bash
@@ -487,67 +487,115 @@ curl localhost:5000/years/<years>/regions
 # Example 
 curl localhost:5000/years/1950-1951/regions 
 
+OR 
+
+curl worldpop.coe332.tacc.cloud/years/<years>/regions 
+
+# Example 
+curl worldpop.coe332.tacc.cloud/years/1950-1951/regions 
+
+# Example Output 
+[ "1950": 
+  { ...
+    "TPopulationMale1July": "4.484",
+    "Time": "1951",
+    "Under5Deaths": "0.067",
+    "VarID": "2",
+    "Variant": "Medium"
+  }
+]
+```
+As mentioned above, this route returned the list of dictionaries of all the regions of a specific range of years. 
+
+### Running _/regions_ route 
+```bash
+curl localhost:5000/regions 
+
+OR 
+
+curl worldpop.coe332.tacc.cloud/regions  
+
+# Output 
+[
+  "ADB_region:_Central_and_West_Asia",
+  "ADB_region:_Developed",
+  "ADB_region:_East_Asia",
+  "ADB_region:_South_Asia",
+  "ADB_region:_Southeast_Asia",
+  ...
+```
+
+You are able to get a list of all the regions available in the dataset. 
+
+### Running _/regions/'region'_ route 
+```bash
+curl localhost:5000/regions/<region> 
+
+OR 
+
+curl worldpop.coe332.tacc.cloud/regions/<region> 
+
+# Output 
+....
+    "TPopulationFemale1July": "96503.882",
+    "TPopulationMale1July": "99167.31",
+    "Time": "1990",
+    "Under5Deaths": "948.189",
+    "VarID": "2",
+    "Variant": "Medium"
+  }
+]
+```
+
+This route returns all the data from a specific region from 1950-2023. 
+
+### Running _/regions/'region'_ route 
+```bash
+curl localhost:5000/regions/<region>/<eras> 
+
+OR 
+
+curl worldpop.coe332.tacc.cloud/regions/<region>/<eras> 
+
+# Example 
+curl localhost:5000/regions/ADB_region:_Central_and_West_Asia/2000-2001
+
 # Example Output 
 {
-  "agr": "HGNC:46398",
-  "alias_name": "",
-  "alias_symbol": "",
-  "bioparadigms_slc": "",
-  "ccds_id": "",
-  "cd": "",
-  "cosmic": "",
-  "curator_notes": "",
-  "date_approved_reserved": "2013-04-02",
-  "date_modified": "2013-04-02",
-  "date_name_changed": "",
-  "date_symbol_changed": "",
-  "ena": "",
-  "ensembl_gene_id": "ENSG00000240723",
-  "entrez_id": "106481027",
-  "enzyme_id": "",
-  "gencc": "",
-  "gene_group": "",
-  "gene_group_id": "",
-  "gtrnadb": "",
-  "hgnc_id": "HGNC:46398",
-  "homeodb": "",
-  "horde_id": "",
-  "imgt": "",
-  "iuphar": "",
-  "lncipedia": "",
-  "lncrnadb": "",
-  "location": "4q31.1",
-  "location_sortable": "04q31.1",
-  "locus_group": "pseudogene",
-  "locus_type": "pseudogene",
-  "lsdb": "",
-  "mamit-trnadb": "",
-  "mane_select": "",
-  "merops": "",
-  "mgd_id": "",
-  "mirbase": "",
-  "name": "RNA, 7SL, cytoplasmic 382, pseudogene",
-  "omim_id": "",
-  "orphanet": "",
-  "prev_name": "",
-  "prev_symbol": "",
-  "pseudogene.org": "",
-  "pubmed_id": "",
-  "refseq_accession": "NG_043943",
-  "rgd_id": "",
-  "rna_central_id": "",
-  "snornabase": "",
-  "status": "Approved",
-  "symbol": "RN7SL382P",
-  "ucsc_id": "uc062zrr.1",
-  "uniprot_ids": "",
-  "uuid": "7cb32997-0e2b-47ab-891a-04bed461ad7b",
-  "vega_id": ""
-}
+  "data": [
+    {
+      "Births": "8098.479",
+      "Births1519": "889.334",
+      "CBR": "32.811",
+      "CDR": "9.01",
+      "CNMR": "-4.224",
+... 
 ```
-As mentioned above, this route returned the dictionary of a specific hgnc_id. We can see that some key:value pairs are missing values, this is due to the fact that the data set is non-uniform or sparsely-populated. We can also see that some values have multiple values, this is being displayed as a whole string for a better visual aesthetic. 
 
-### Running _/jobs_ route with the _POST_ method
+This route returns the data from specific region from the specified years. 
+
+### Running _/help_ route 
+The help route lets you understand how to format all of the routes. More importantly it will be very helpful when submitting jobs and downloading the results of those jobs. Please take a look at this before submitting any job. 
+
+```bash
+curl localhost:5000/help
+
+OR 
+
+curl worldpop.coe332.tacc.cloud/help
+
+# Output 
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+    <meta charset="UTF-8">
+    <title>API Routes</title>
+...
+```
+
+If you run this route through localhost, it will output an html string. However, if you copy paste ```worldpop.coe332.tacc.cloud/help``` into your browser, you will get a table with each route and how to query them. This same table in above in this README. If you scroll down, you should see an example for posting a job. 
+
+### Running _/regions/'region'_ route 
 The new _jobs_ route allows you to create a new job with a unique identifier using the POST method. The inputs should be a start date and an end date for the date approved field. This will submit a job that will look through all of the data set and perform analysis on the data that is within the specified range of dates. This analysis will be explained in later routes. 
 
 To submit a job, please do the following: 
