@@ -42,6 +42,8 @@ def manipulate_data(job_data):
     start = job_data.get('start')
     end = job_data.get('end') 
     regions = job_data.get('location')
+    if regions is None:
+        regions = 'World'
     raw_data = get_year(f'{start}-{end}', regions)
     # raw_data = raw_data.json() 
     new_data = defaultdict(lambda: defaultdict(list))
@@ -57,13 +59,28 @@ def manipulate_data(job_data):
         new_data[year][location].append(entry)
     return {year: dict(locations) for year, locations in new_data.items()}
 
-def plot_data(new_data, jobid, start_year, end_year, plot_type='line', Location='World', query1='TPopulationJan1', query2=None, animate=False):
+def plot_data(new_data, jobid, start_year, end_year, plot_type='line', Location=None, query1='TPopulation1Jan', query2=None, animate=False):
     """
     """
-    Location = Location or 'World'
-    plot_type = plot_type or 'line'
+    if query1 is None:
+        query1 = 'TPopulation1Jan'
+    
+    if query2 is not None and query1 is None:
+        query1 = query2
+        query2 = None
+    
+    logging.debug(f'query1 is of type: {type(query1)}')
+    logging.debug(f'query1 has data: {query1}')
+
+    if Location is None:
+        Location = ['World']
+    
+
+    if plot_type is None:
+        plot_type = 'line'
+    
     animate = animate or False
-    query1 = query1 or 'TPopulationJan1'
+    
 
     Time_range = [str(year) for year in range(start_year, end_year + 1)]
     logging.debug(f'Time_range is of type: {type(Time_range)}')
@@ -337,9 +354,9 @@ def update(jobid: str):
         logging.debug(f'new_data dictionaries: {new_data.keys()}')
 
         region_names = job_dict.get("location")
-        regions = region_names.split(",") if region_names else []
+        regions = region_names.split(",") if region_names else ['World']
 
-        plot_data(new_data, jobid, int(job_dict["start"]), int(job_dict["end"]), job_dict["plot_type"], 
+        plot_data(new_data, jobid, int(job_dict["start"]), int(job_dict["end"]), job_dict.get("plot_type"), 
                   regions, job_dict.get("query1"), job_dict.get("query2"), string_to_bool(job_dict.get("animate")))
 
         update_job_status(jobid, 'complete') 
